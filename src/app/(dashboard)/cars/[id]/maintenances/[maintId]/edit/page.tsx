@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaintenanceSchema } from '@/lib/validations';
 import { formatCurrency } from '@/lib/formatters';
-import { ArrowLeft, Loader2, Save, Wrench, Plus, Trash2, ShieldAlert, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Wrench, Plus, Trash2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { z } from 'zod';
 
@@ -19,10 +19,11 @@ interface PartItem {
 
 type MaintenanceFormValues = z.infer<typeof MaintenanceSchema>;
 
-export default function NewMaintenancePage() {
-  const { id: carId } = useParams();
+export default function EditMaintenancePage() {
+  const { id: carId, maintId } = useParams();
   const router = useRouter();
   
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [carName, setCarName] = useState('');
@@ -39,11 +40,12 @@ export default function NewMaintenancePage() {
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<MaintenanceFormValues>({
     resolver: zodResolver(MaintenanceSchema) as any,
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
+      date: '',
       mileage: 0,
       type: 'Preventiva',
       workshop: '',
@@ -57,24 +59,66 @@ export default function NewMaintenancePage() {
     },
   });
 
-  // Carregar dados básicos do carro para o cabeçalho
+  // Carregar dados básicos do carro e dados da manutenção existente
   useEffect(() => {
-    const fetchCar = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/cars/${carId}`);
-        if (res.ok) {
-          const car = await res.json();
+        setLoading(true);
+        setError(null);
+
+        // Carregar carro
+        const carRes = await fetch(`/api/cars/${carId}`);
+        if (carRes.ok) {
+          const car = await carRes.json();
           setCarName(`${car.brand} ${car.model}`);
-          setValue('mileage', car.currentMileage);
         }
-      } catch (err) {
+
+        // Carregar manutenção
+        const maintRes = await fetch(`/api/maintenances/${maintId}`);
+        if (!maintRes.ok) {
+          throw new Error('Falha ao carregar dados da manutenção.');
+        }
+        const maint = await maintRes.json();
+
+        // Tratar data para input tipo date (YYYY-MM-DD)
+        const formattedDate = new Date(maint.date).toISOString().split('T')[0];
+
+        reset({
+          date: formattedDate,
+          mileage: maint.mileage,
+          type: maint.type as any,
+          workshop: maint.workshop || '',
+          description: maint.description,
+          laborCost: maint.laborCost,
+          notes: maint.notes || '',
+          paymentMethod: maint.paymentMethod || 'À vista',
+          installmentCount: maint.installmentCount || 1,
+          installmentValue: maint.installmentValue || 0,
+          discount: maint.discount || 0,
+        });
+
+        // Set parts list
+        if (maint.parts) {
+          setParts(maint.parts.map((p: any) => ({
+            name: p.name,
+            brand: p.brand || '',
+            quantity: p.quantity,
+            unitPrice: p.unitPrice,
+          })));
+        }
+
+      } catch (err: any) {
         console.error(err);
+        setError(err.message || 'Erro ao carregar dados da manutenção.');
+      } finally {
+        setLoading(false);
       }
     };
-    if (carId) {
-      fetchCar();
+
+    if (carId && maintId) {
+      fetchData();
     }
-  }, [carId, setValue]);
+  }, [carId, maintId, reset]);
 
   // Assistir o valor da mão de obra e pagamentos
   const laborCost = watch('laborCost') || 0;
@@ -138,24 +182,32 @@ export default function NewMaintenancePage() {
         parts, // Envia lista de peças acoplada
       };
 
-      const res = await fetch(`/api/cars/${carId}/maintenances`, {
-        method: 'POST',
+      const res = await fetch(`/api/maintenances/${maintId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || 'Erro ao salvar manutenção.');
+        throw new Error(errData.error || 'Erro ao atualizar manutenção.');
       }
 
       router.push(`/cars/${carId}`);
     } catch (err: any) {
-      setError(err.message || 'Erro ao registrar manutenção.');
+      setError(err.message || 'Erro ao salvar manutenção.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -168,8 +220,8 @@ export default function NewMaintenancePage() {
           <ArrowLeft className="h-4.5 w-4.5" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Nova Manutenção</h1>
-          <p className="text-slate-500 text-xs mt-0.5">Registrar serviço feito no veículo: {carName}</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Editar Manutenção</h1>
+          <p className="text-slate-500 text-xs mt-0.5">Modificar serviço feito no veículo: {carName}</p>
         </div>
       </div>
 
@@ -472,24 +524,32 @@ export default function NewMaintenancePage() {
               </div>
             </div>
 
-            <button
-              onClick={handleSubmit(onSubmit)}
-              disabled={submitting}
-              type="button"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 disabled:bg-blue-400"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Registrando...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  <span>Salvar Manutenção</span>
-                </>
-              )}
-            </button>
+            <div className="flex gap-2">
+              <Link
+                href={`/cars/${carId}`}
+                className="w-1/3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-3 rounded-xl text-xs transition-all shadow-sm text-center"
+              >
+                Cancelar
+              </Link>
+              <button
+                onClick={handleSubmit(onSubmit)}
+                disabled={submitting}
+                type="button"
+                className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 disabled:bg-blue-400"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    <span>Salvar Alterações</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

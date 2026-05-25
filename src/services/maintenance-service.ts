@@ -22,6 +22,7 @@ export interface CreateMaintenanceInput {
   paymentMethod?: string | null;
   installmentCount?: number | null;
   installmentValue?: number | null;
+  discount?: number | null;
 }
 
 export class MaintenanceService {
@@ -121,9 +122,13 @@ export class MaintenanceService {
     
     const hasInstallmentValue = input.installmentValue !== undefined && input.installmentValue !== null && input.installmentValue > 0;
     const isInstallment = input.paymentMethod && input.paymentMethod !== 'À vista';
-    const totalCost = (isInstallment && hasInstallmentValue)
+    
+    const discount = input.discount || 0;
+    let totalCost = (isInstallment && hasInstallmentValue)
       ? Number(((input.installmentCount || 1) * input.installmentValue!).toFixed(2))
       : calculateMaintenanceTotal(input.laborCost, totalPartsCost);
+
+    totalCost = Math.max(0, Number((totalCost - discount).toFixed(2)));
 
     // Atualiza quilometragem atual do carro caso a manutenção tenha quilometragem maior
     const car = await prisma.car.findUnique({ where: { id: carId } });
@@ -145,6 +150,7 @@ export class MaintenanceService {
         laborCost: input.laborCost,
         totalPartsCost,
         totalCost,
+        discount,
         paymentMethod: input.paymentMethod || "À vista",
         installmentCount: input.installmentCount || 1,
         installmentValue: input.installmentValue || null,
@@ -192,9 +198,13 @@ export class MaintenanceService {
     
     const hasInstallmentValue = input.installmentValue !== undefined && input.installmentValue !== null && input.installmentValue > 0;
     const isInstallment = input.paymentMethod && input.paymentMethod !== 'À vista';
-    const totalCost = (isInstallment && hasInstallmentValue)
+    
+    const discount = input.discount || 0;
+    let totalCost = (isInstallment && hasInstallmentValue)
       ? Number(((input.installmentCount || 1) * input.installmentValue!).toFixed(2))
       : calculateMaintenanceTotal(input.laborCost, totalPartsCost);
+
+    totalCost = Math.max(0, Number((totalCost - discount).toFixed(2)));
 
     // Atualiza quilometragem atual do carro caso a manutenção tenha quilometragem maior
     if (input.mileage > maintenance.car.currentMileage) {
@@ -223,6 +233,7 @@ export class MaintenanceService {
           laborCost: input.laborCost,
           totalPartsCost,
           totalCost,
+          discount,
           paymentMethod: input.paymentMethod || "À vista",
           installmentCount: input.installmentCount || 1,
           installmentValue: input.installmentValue || null,
@@ -271,7 +282,16 @@ export class MaintenanceService {
     if (!maintenance) return;
 
     const totalPartsCost = calculateTotalPartsCost(parts);
-    const totalCost = calculateMaintenanceTotal(maintenance.laborCost, totalPartsCost);
+    
+    const hasInstallmentValue = maintenance.installmentValue !== undefined && maintenance.installmentValue !== null && maintenance.installmentValue > 0;
+    const isInstallment = maintenance.paymentMethod && maintenance.paymentMethod !== 'À vista';
+    
+    const discount = maintenance.discount || 0;
+    let totalCost = (isInstallment && hasInstallmentValue)
+      ? Number(((maintenance.installmentCount || 1) * maintenance.installmentValue!).toFixed(2))
+      : calculateMaintenanceTotal(maintenance.laborCost, totalPartsCost);
+
+    totalCost = Math.max(0, Number((totalCost - discount).toFixed(2)));
 
     await tx.maintenance.update({
       where: { id: maintenanceId },

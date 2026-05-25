@@ -29,6 +29,7 @@ interface MaintenanceLog {
   paymentMethod?: string | null;
   installmentCount?: number | null;
   installmentValue?: number | null;
+  discount?: number | null;
 }
 
 interface FuelLog {
@@ -335,7 +336,14 @@ export default function ReportsPage() {
                             <span className="text-slate-600">{m.paymentMethod}</span>
                           )}
                         </td>
-                        <td className="py-3 text-right font-extrabold text-slate-950">{formatCurrency(m.totalCost)}</td>
+                        <td className="py-3 text-right">
+                          <span className="font-extrabold text-slate-950 block">{formatCurrency(m.totalCost)}</span>
+                          {m.discount && m.discount > 0 ? (
+                            <span className="text-xxs text-emerald-600 font-semibold block">
+                              -{formatCurrency(m.discount)} desc.
+                            </span>
+                          ) : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

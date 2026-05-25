@@ -12,10 +12,11 @@ import { z } from 'zod';
 
 type FuelFormValues = z.infer<typeof FuelRecordSchema>;
 
-export default function NewFuelRecordPage() {
-  const { id: carId } = useParams();
+export default function EditFuelRecordPage() {
+  const { id: carId, fuelId } = useParams();
   const router = useRouter();
 
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [carName, setCarName] = useState('');
@@ -26,11 +27,12 @@ export default function NewFuelRecordPage() {
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<FuelFormValues>({
     resolver: zodResolver(FuelRecordSchema) as any,
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
+      date: '',
       mileage: 0,
       fuelType: 'Gasolina',
       pricePerLiter: 0,
@@ -42,28 +44,58 @@ export default function NewFuelRecordPage() {
     },
   });
 
-  // Carregar dados básicos do carro para o cabeçalho
+  // Carregar dados do carro e do abastecimento existente
   useEffect(() => {
-    const fetchCar = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/cars/${carId}`);
-        if (res.ok) {
-          const car = await res.json();
+        setLoading(true);
+        setError(null);
+
+        // Buscar dados do carro
+        const carRes = await fetch(`/api/cars/${carId}`);
+        if (carRes.ok) {
+          const car = await carRes.json();
           setCarName(`${car.brand} ${car.model}`);
-          setValue('mileage', car.currentMileage);
-          // Set fuel type suggestion based on car default if possible
-          if (car.fuelType && car.fuelType !== 'Flex') {
-            setValue('fuelType', car.fuelType);
-          }
         }
-      } catch (err) {
+
+        // Buscar dados do abastecimento
+        const recordRes = await fetch(`/api/fuel-records/${fuelId}`);
+        if (!recordRes.ok) {
+          throw new Error('Falha ao carregar dados do abastecimento.');
+        }
+        const record = await recordRes.json();
+
+        // Tratar data para input tipo date (YYYY-MM-DD)
+        const formattedDate = new Date(record.date).toISOString().split('T')[0];
+
+        reset({
+          date: formattedDate,
+          mileage: record.mileage,
+          fuelType: record.fuelType as any,
+          pricePerLiter: record.pricePerLiter,
+          liters: record.liters,
+          gasStation: record.gasStation || '',
+          city: record.city || '',
+          fullTank: record.fullTank,
+          notes: record.notes || '',
+        });
+
+        // Calcular valor total pago inicial
+        const total = Number((record.pricePerLiter * record.liters).toFixed(2));
+        setTotalPaid(total);
+
+      } catch (err: any) {
         console.error(err);
+        setError(err.message || 'Erro ao carregar dados.');
+      } finally {
+        setLoading(false);
       }
     };
-    if (carId) {
-      fetchCar();
+
+    if (carId && fuelId) {
+      fetchData();
     }
-  }, [carId, setValue]);
+  }, [carId, fuelId, reset]);
 
   // Assistir valores para cálculo em tempo real
   const pricePerLiter = watch('pricePerLiter') || 0;
@@ -104,24 +136,32 @@ export default function NewFuelRecordPage() {
       setError(null);
       setSubmitting(true);
 
-      const res = await fetch(`/api/cars/${carId}/fuel-records`, {
-        method: 'POST',
+      const res = await fetch(`/api/fuel-records/${fuelId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || 'Erro ao registrar abastecimento.');
+        throw new Error(errData.error || 'Erro ao atualizar abastecimento.');
       }
 
       router.push(`/cars/${carId}`);
     } catch (err: any) {
-      setError(err.message || 'Erro ao registrar abastecimento.');
+      setError(err.message || 'Erro ao salvar abastecimento.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -134,8 +174,8 @@ export default function NewFuelRecordPage() {
           <ArrowLeft className="h-4.5 w-4.5" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Novo Abastecimento</h1>
-          <p className="text-slate-500 text-xs mt-0.5 font-medium">Registrar combustível para o veículo: {carName}</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Editar Abastecimento</h1>
+          <p className="text-slate-500 text-xs mt-0.5 font-medium">Modificar dados de combustível do veículo: {carName}</p>
         </div>
       </div>
 
@@ -248,18 +288,18 @@ export default function NewFuelRecordPage() {
               })}
             />
             <p className="text-slate-400 text-[9px] mt-1 font-medium">
-              Calculado automaticamente, mas editável se necessário.
+              Ao preencher a quantidade de litros e o valor pago, o valor por litro é calculado automaticamente (com 3 casas decimais).
             </p>
-            {errors.pricePerLiter && <p className="text-red-600 text-xxs mt-1.5 font-semibold">{errors.pricePerLiter.message}</p>}
+            {errors.pricePerLiter && <p className="text-red-600 text-[9px] mt-1.5 font-semibold">{errors.pricePerLiter.message}</p>}
           </div>
 
-          {/* Posto */}
+          {/* Posto de Combustível */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Posto de Combustível</label>
             <input
               type="text"
-              placeholder="Ex: Posto Ipiranga"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              placeholder="Ex: Posto Ipiranga Centro"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
               {...register('gasStation')}
             />
           </div>
@@ -270,7 +310,7 @@ export default function NewFuelRecordPage() {
             <input
               type="text"
               placeholder="Ex: São Paulo"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
               {...register('city')}
             />
           </div>
@@ -278,45 +318,41 @@ export default function NewFuelRecordPage() {
 
         {/* Observações */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Notas / Observações</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Observações adicionais</label>
           <textarea
-            rows={2}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
-            placeholder="Notas especiais..."
+            rows={3}
+            placeholder="Alguma nota sobre o abastecimento?"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 resize-none font-medium"
             {...register('notes')}
           />
         </div>
 
-        {/* Real-time Calculation Indicator banner */}
-        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs">
-          <span className="text-slate-500 font-medium">Custo Total:</span>
-          <span className="font-extrabold text-blue-600 text-base">
-            {totalPaid ? formatCurrency(Number(totalPaid)) : formatCurrency(totalPrice)}
-          </span>
+        {/* Resumo visual do cálculo */}
+        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between text-xs font-semibold">
+          <span className="text-slate-500">Custo Total Estimado:</span>
+          <span className="text-base font-extrabold text-slate-950">{formatCurrency(totalPrice)}</span>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        {/* Submit */}
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
           <Link
             href={`/cars/${carId}`}
-            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-5 py-2.5 rounded-xl text-xs transition-all"
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-5 py-2.5 rounded-xl text-xs transition-all shadow-sm"
           >
             Cancelar
           </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 disabled:bg-blue-400"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center gap-1.5"
           >
             {submitting ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Registrando...</span>
+                <Loader2 className="h-4 w-4 animate-spin" /> Salvando...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4" />
-                <span>Registrar Abastecimento</span>
+                <Save className="h-4 w-4" /> Salvar Alterações
               </>
             )}
           </button>

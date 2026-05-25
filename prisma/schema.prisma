@@ -51,6 +51,7 @@ model Maintenance {
   laborCost        Float
   totalPartsCost   Float             @default(0)
   totalCost        Float             @default(0)
+  discount         Float?            @default(0)
   paymentMethod    String?           @default("À vista")
   installmentCount Int?              @default(1)
   installmentValue Float?

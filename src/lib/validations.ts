@@ -84,6 +84,7 @@ export const MaintenanceSchema = z.object({
   paymentMethod: z.string().optional().nullable().or(z.literal('')),
   installmentCount: z.coerce.number().int().min(1).optional().nullable(),
   installmentValue: z.coerce.number().min(0).optional().nullable(),
+  discount: z.coerce.number().min(0).optional().nullable(),
 });
 
 // Validação de Abastecimento
