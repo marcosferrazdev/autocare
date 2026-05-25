@@ -125,3 +125,12 @@ export const VehicleWebInfoSchema = z.object({
   sourceName: z.string().optional().nullable(),
   sourceUrl: z.string().optional().nullable(),
 });
+
+// Validação de Item de Melhoria / Reforma
+export const UpgradeItemSchema = z.object({
+  name: z.string().min(1, 'O nome é obrigatório'),
+  description: z.string().optional().nullable().or(z.literal('')),
+  estimatedValue: z.coerce.number().min(0).optional().nullable(),
+  purchaseLink: z.string().optional().nullable().or(z.literal('')),
+  status: z.enum(['Pendente', 'Concluido']).default('Pendente'),
+});

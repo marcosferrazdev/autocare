@@ -38,6 +38,7 @@ model Car {
   maintenances    Maintenance[]
   fuelRecords     FuelRecord[]
   vehicleWebInfo  VehicleWebInfo?
+  upgradeItems    UpgradeItem[]
 }
 
 model Maintenance {
@@ -114,4 +115,17 @@ model VehicleWebInfo {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   car                Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+model UpgradeItem {
+  id             String   @id @default(uuid())
+  carId          String
+  name           String
+  description    String?
+  estimatedValue Float?
+  purchaseLink   String?
+  status         String   @default("Pendente") // "Pendente" | "Concluido"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  car            Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
 }
