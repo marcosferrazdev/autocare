@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: autocare-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: autocare_user
+      POSTGRES_PASSWORD: autocare_password
+      POSTGRES_DB: autocare_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - autocare_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  autocare_postgres_data:

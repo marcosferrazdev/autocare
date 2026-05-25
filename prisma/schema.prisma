@@ -1,0 +1,113 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  cars         Car[]
+}
+
+model Car {
+  id              String           @id @default(uuid())
+  userId          String
+  brand           String
+  model           String
+  yearManufacture Int
+  yearModel       Int
+  plate           String?
+  color           String?
+  fuelType        String
+  engine          String?
+  currentMileage  Float
+  nickname        String?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  maintenances    Maintenance[]
+  fuelRecords     FuelRecord[]
+  vehicleWebInfo  VehicleWebInfo?
+}
+
+model Maintenance {
+  id               String            @id @default(uuid())
+  carId            String
+  date             DateTime
+  mileage          Float
+  type             String
+  workshop         String?
+  description      String
+  laborCost        Float
+  totalPartsCost   Float             @default(0)
+  totalCost        Float             @default(0)
+  paymentMethod    String?           @default("À vista")
+  installmentCount Int?              @default(1)
+  installmentValue Float?
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  car              Car               @relation(fields: [carId], references: [id], onDelete: Cascade)
+  parts            MaintenancePart[]
+}
+
+model MaintenancePart {
+  id            String      @id @default(uuid())
+  maintenanceId String
+  name          String
+  brand         String?
+  quantity      Float
+  unitPrice     Float
+  totalPrice    Float
+  notes         String?
+  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+}
+
+model FuelRecord {
+  id                    String   @id @default(uuid())
+  carId                 String
+  date                  DateTime
+  mileage               Float
+  fuelType              String
+  pricePerLiter         Float
+  liters                Float
+  totalPrice            Float
+  gasStation            String?
+  city                  String?
+  fullTank              Boolean  @default(false)
+  consumptionKmPerLiter Float?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  car                   Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+model VehicleWebInfo {
+  id                 String    @id @default(uuid())
+  carId              String    @unique
+  tankCapacity       Float?
+  cityConsumption    Float?
+  highwayConsumption Float?
+  recommendedOil     String?
+  tirePressure       String?
+  tireSize           String?
+  engineInfo         String?
+  fuelType           String?
+  generalNotes       String?
+  sourceName         String?
+  sourceUrl          String?
+  searchedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  car                Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
