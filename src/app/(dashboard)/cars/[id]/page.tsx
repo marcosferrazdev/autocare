@@ -18,7 +18,8 @@ import {
   Save,
   BookOpen,
   CreditCard,
-  Trash2
+  Trash2,
+  ChevronDown
 } from 'lucide-react';
 
 interface WebInfo {
@@ -65,6 +66,16 @@ export default function CarDetailPage() {
 
   // Estados do formulário de informação técnica (sugestões da web)
   const [webInfoForm, setWebInfoForm] = useState<Partial<WebInfo>>({});
+
+  // Controle de expansão do histórico de manutenção
+  const [expandedMaintenances, setExpandedMaintenances] = useState<Record<string, boolean>>({});
+
+  const toggleMaintenanceExpand = (maintId: string) => {
+    setExpandedMaintenances(prev => ({
+      ...prev,
+      [maintId]: !prev[maintId],
+    }));
+  };
 
   const fetchData = async () => {
     try {
@@ -272,65 +283,138 @@ export default function CarDetailPage() {
             </Link>
           </div>
 
-          {maintenances.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="py-3 flex justify-between items-center border-b border-slate-50 last:border-0 gap-3">
+                  <div className="min-w-0 space-y-2 w-full">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                      <div className="h-4 bg-slate-100 rounded w-16"></div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 bg-slate-100 rounded w-20"></div>
+                      <div className="h-3 bg-slate-100 rounded w-24"></div>
+                    </div>
+                  </div>
+                  <div className="h-5 bg-slate-200 rounded w-16 shrink-0"></div>
+                </div>
+              ))}
+            </div>
+          ) : maintenances.length === 0 ? (
             <div className="py-6 text-center text-slate-400 italic text-xs">
               Nenhuma manutenção registrada para este carro.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 max-h-[350px] overflow-y-auto pr-1">
-              {maintenances.map((m) => (
-                <div key={m.id} className="py-3 flex justify-between items-start text-xs gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800 truncate block">{m.description}</span>
-                      <span className="text-xxs px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase font-semibold shrink-0">
-                        {m.type}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-slate-400 mt-1 flex-wrap">
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(m.date)}</span>
-                      <span className="flex items-center gap-1"><Milestone className="h-3 w-3" /> {formatMileage(m.mileage)}</span>
-                      {m.workshop && <span className="truncate">Oficina: {m.workshop}</span>}
-                      <span className="flex items-center gap-1 shrink-0">
-                        <CreditCard className="h-3.5 w-3.5" />{' '}
-                        {m.paymentMethod === 'À vista' || !m.paymentMethod ? (
-                          'À vista'
-                        ) : m.installmentCount && m.installmentValue ? (
-                          `${m.installmentCount}x de ${formatCurrency(m.installmentValue)}`
-                        ) : (
-                          m.paymentMethod
+              {maintenances.map((m) => {
+                const isExpanded = !!expandedMaintenances[m.id];
+                const hasDetails = (m.parts && m.parts.length > 0) || m.notes || m.laborCost > 0;
+                
+                return (
+                  <div key={m.id} className="py-3 border-b border-slate-100 last:border-0">
+                    <div className="flex justify-between items-start text-xs gap-3">
+                      <div 
+                        onClick={() => hasDetails && toggleMaintenanceExpand(m.id)}
+                        className={`min-w-0 flex gap-2.5 ${hasDetails ? 'cursor-pointer hover:opacity-85 select-none' : ''}`}
+                      >
+                        {hasDetails && (
+                          <ChevronDown 
+                            className={`h-4 w-4 text-slate-400 mt-0.5 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-blue-600' : ''}`} 
+                          />
                         )}
-                      </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-800 truncate block max-w-[200px] sm:max-w-xs">{m.description}</span>
+                            <span className="text-xxs px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase font-semibold shrink-0">
+                              {m.type}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-slate-400 mt-1 flex-wrap">
+                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(m.date)}</span>
+                            <span className="flex items-center gap-1"><Milestone className="h-3 w-3" /> {formatMileage(m.mileage)}</span>
+                            {m.workshop && <span className="truncate">Oficina: {m.workshop}</span>}
+                            <span className="flex items-center gap-1 shrink-0">
+                              <CreditCard className="h-3.5 w-3.5" />{' '}
+                              {m.paymentMethod === 'À vista' || !m.paymentMethod ? (
+                                'À vista'
+                              ) : m.installmentCount && m.installmentValue ? (
+                                `${m.installmentCount}x de ${formatCurrency(m.installmentValue)}`
+                              ) : (
+                                m.paymentMethod
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <div className="text-right">
+                          <span className="font-bold text-slate-800 block">{formatCurrency(m.totalCost)}</span>
+                          {m.discount && m.discount > 0 ? (
+                            <span className="text-xxs text-emerald-600 font-semibold block">
+                              -{formatCurrency(m.discount)} desc.
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-2 print:hidden">
+                          <Link
+                            href={`/cars/${car.id}/maintenances/${m.id}/edit`}
+                            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded transition-all"
+                            title="Editar manutenção"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteMaintenance(m.id)}
+                            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded transition-all"
+                            title="Excluir manutenção"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Collapsible details panel */}
+                    {isExpanded && hasDetails && (
+                      <div className="mt-3 ml-6.5 p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-3 animate-fade-in text-[11px]">
+                        {/* Peças Substituídas */}
+                        {m.parts && m.parts.length > 0 ? (
+                          <div>
+                            <p className="font-bold text-slate-400 text-[9px] uppercase tracking-wider mb-2">Peças Substituídas</p>
+                            <div className="space-y-1.5 pl-1">
+                              {m.parts.map((p: any) => (
+                                <div key={p.id} className="flex justify-between items-center text-slate-700">
+                                  <span>
+                                    <span className="font-bold text-slate-900">{p.quantity}x</span> {p.name}{' '}
+                                    {p.brand && <span className="text-slate-400">({p.brand})</span>}
+                                  </span>
+                                  <span className="font-medium text-slate-600">{formatCurrency(p.totalPrice)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {/* Detalhe de Custos */}
+                        <div className="flex justify-between items-center text-[10px] text-slate-500 pt-2 border-t border-slate-200/60">
+                          <span>Mão de Obra:</span>
+                          <span className="font-medium">{formatCurrency(m.laborCost)}</span>
+                        </div>
+
+                        {/* Observações */}
+                        {m.notes && (
+                          <div className="pt-2 border-t border-slate-200/60">
+                            <p className="font-bold text-slate-400 text-[9px] uppercase tracking-wider mb-1">Observações</p>
+                            <p className="text-slate-600 italic leading-relaxed whitespace-pre-wrap">{m.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <div className="text-right">
-                      <span className="font-bold text-slate-800 block">{formatCurrency(m.totalCost)}</span>
-                      {m.discount && m.discount > 0 ? (
-                        <span className="text-xxs text-emerald-600 font-semibold block">
-                          -{formatCurrency(m.discount)} desc.
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-2 print:hidden">
-                      <Link
-                        href={`/cars/${car.id}/maintenances/${m.id}/edit`}
-                        className="p-1 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded transition-all"
-                        title="Editar manutenção"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteMaintenance(m.id)}
-                        className="p-1 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded transition-all"
-                        title="Excluir manutenção"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -350,7 +434,26 @@ export default function CarDetailPage() {
             </Link>
           </div>
 
-          {fuelRecords.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="py-3 flex justify-between items-center border-b border-slate-50 last:border-0 gap-3">
+                  <div className="min-w-0 space-y-2 w-full">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-slate-100 rounded w-20"></div>
+                      <div className="h-4 bg-slate-100 rounded w-14"></div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 bg-slate-100 rounded w-20"></div>
+                      <div className="h-3 bg-slate-100 rounded w-24"></div>
+                    </div>
+                  </div>
+                  <div className="h-5 bg-slate-200 rounded w-16 shrink-0"></div>
+                </div>
+              ))}
+            </div>
+          ) : fuelRecords.length === 0 ? (
             <div className="py-6 text-center text-slate-400 italic text-xs">
               Nenhum abastecimento registrado para este carro.
             </div>
@@ -374,10 +477,20 @@ export default function CarDetailPage() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-slate-400 mt-1">
+                    <div className="flex items-center gap-3 text-slate-400 mt-1 flex-wrap">
                       <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(f.date)}</span>
                       <span className="flex items-center gap-1"><Milestone className="h-3 w-3" /> {formatMileage(f.mileage)}</span>
                       {f.gasStation && <span className="truncate">{f.gasStation}</span>}
+                      <span className="flex items-center gap-1 shrink-0">
+                        <CreditCard className="h-3.5 w-3.5" />{' '}
+                        {f.paymentMethod === 'À vista' || !f.paymentMethod ? (
+                          'À vista'
+                        ) : f.installmentCount && f.installmentValue ? (
+                          `${f.installmentCount}x de ${formatCurrency(f.installmentValue)}`
+                        ) : (
+                          f.paymentMethod
+                        )}
+                      </span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">

@@ -42,6 +42,9 @@ interface FuelLog {
   totalPrice: number;
   gasStation: string | null;
   consumptionKmPerLiter: number | null;
+  paymentMethod?: string | null;
+  installmentCount?: number | null;
+  installmentValue?: number | null;
 }
 
 export default function ReportsPage() {
@@ -257,145 +260,203 @@ export default function ReportsPage() {
         {/* Total Gasto */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Total Gasto Filtrado</p>
-          <p className="text-lg font-bold text-slate-800 mt-1">{formatCurrency(totalSpent)}</p>
+          {loading ? (
+            <div className="h-6 bg-slate-100 rounded w-2/3 mt-1.5 animate-pulse"></div>
+          ) : (
+            <p className="text-lg font-bold text-slate-800 mt-1">{formatCurrency(totalSpent)}</p>
+          )}
           <div className="mt-2 text-slate-400 text-xxs flex justify-between">
-            <span>Manut: {formatCurrency(totalMaintCost)}</span>
-            <span>Comb: {formatCurrency(totalFuelCost)}</span>
+            {loading ? (
+              <>
+                <div className="h-3 bg-slate-100 rounded w-1/3 animate-pulse"></div>
+                <div className="h-3 bg-slate-100 rounded w-1/3 animate-pulse"></div>
+              </>
+            ) : (
+              <>
+                <span>Manut: {formatCurrency(totalMaintCost)}</span>
+                <span>Comb: {formatCurrency(totalFuelCost)}</span>
+              </>
+            )}
           </div>
         </div>
 
         {/* Distância */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Distância no Período</p>
-          <p className="text-lg font-bold text-slate-800 mt-1">{kmDriven > 0 ? `${formatMileage(kmDriven)}` : '0 km'}</p>
+          {loading ? (
+            <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
+          ) : (
+            <p className="text-lg font-bold text-slate-800 mt-1">{kmDriven > 0 ? `${formatMileage(kmDriven)}` : '0 km'}</p>
+          )}
           <p className="text-slate-400 text-xxs mt-2">Diferença de km do período</p>
         </div>
 
         {/* Consumo */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Consumo Médio</p>
-          <p className="text-lg font-bold text-slate-800 mt-1">{avgConsumption ? formatConsumption(avgConsumption) : '-'}</p>
+          {loading ? (
+            <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
+          ) : (
+            <p className="text-lg font-bold text-slate-800 mt-1">{avgConsumption ? formatConsumption(avgConsumption) : '-'}</p>
+          )}
           <p className="text-slate-400 text-xxs mt-2">Média dos abastecimentos</p>
         </div>
 
         {/* Custo/KM */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Custo por KM Rodado</p>
-          <p className="text-lg font-bold text-slate-800 mt-1">{costPerKm > 0 ? `${formatCurrency(costPerKm)}/km` : '-'}</p>
+          {loading ? (
+            <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
+          ) : (
+            <p className="text-lg font-bold text-slate-800 mt-1">{costPerKm > 0 ? `${formatCurrency(costPerKm)}/km` : '-'}</p>
+          )}
           <p className="text-slate-400 text-xxs mt-2">Total gasto / distância rodada</p>
         </div>
       </div>
 
-      {loading && (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
-      )}
-
-      {!loading && (
-        <div className="space-y-8">
-          {/* Maintenances Extrato */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3.5 mb-4">
-              <Wrench className="h-4.5 w-4.5 text-blue-600" />
-              <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Manutenções ({maintenances.length})</h2>
+      <div className="space-y-8">
+        {/* Maintenances Extrato */}
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3.5 mb-4">
+            <Wrench className="h-4.5 w-4.5 text-blue-600" />
+            <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Manutenções ({maintenances.length})</h2>
+          </div>
+          
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3, 4].map(n => (
+                <div key={n} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0 gap-4">
+                  <div className="h-4 bg-slate-100 rounded w-16"></div>
+                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-slate-100 rounded w-16"></div>
+                  <div className="h-4 bg-slate-100 rounded w-12"></div>
+                  <div className="h-4 bg-slate-100 rounded w-24"></div>
+                  <div className="h-4 bg-slate-100 rounded w-20"></div>
+                  <div className="h-4 bg-slate-200 rounded w-16"></div>
+                </div>
+              ))}
             </div>
-            
-            {maintenances.length === 0 ? (
-              <p className="text-slate-400 italic text-xs py-4 text-center">Nenhum registro encontrado para os filtros ativos.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
-                      <th className="pb-3 pr-4">Data</th>
-                      <th className="pb-3 pr-4">Descrição</th>
-                      <th className="pb-3 pr-4">Tipo</th>
-                      <th className="pb-3 pr-4">Odômetro</th>
-                      <th className="pb-3 pr-4">Oficina</th>
-                      <th className="pb-3 pr-4">Pagamento</th>
-                      <th className="pb-3 text-right">Total</th>
+          ) : maintenances.length === 0 ? (
+            <p className="text-slate-400 italic text-xs py-4 text-center">Nenhum registro encontrado para os filtros ativos.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
+                    <th className="pb-3 pr-4">Data</th>
+                    <th className="pb-3 pr-4">Descrição</th>
+                    <th className="pb-3 pr-4">Tipo</th>
+                    <th className="pb-3 pr-4">Odômetro</th>
+                    <th className="pb-3 pr-4">Oficina</th>
+                    <th className="pb-3 pr-4">Pagamento</th>
+                    <th className="pb-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {maintenances.map((m) => (
+                    <tr key={m.id}>
+                      <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(m.date)}</td>
+                      <td className="py-3 pr-4 font-bold text-slate-900">{m.description}</td>
+                      <td className="py-3 pr-4 font-medium"><span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase text-xxs">{m.type}</span></td>
+                      <td className="py-3 pr-4">{formatMileage(m.mileage)}</td>
+                      <td className="py-3 pr-4 text-slate-500">{m.workshop || '-'}</td>
+                      <td className="py-3 pr-4 text-slate-500 font-medium">
+                        {m.paymentMethod === 'À vista' || !m.paymentMethod ? (
+                          <span className="text-slate-600">À vista</span>
+                        ) : m.installmentCount && m.installmentValue ? (
+                          <span className="text-slate-800 font-semibold">
+                            A prazo ({m.installmentCount}x de {formatCurrency(m.installmentValue)})
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">{m.paymentMethod}</span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right">
+                        <span className="font-extrabold text-slate-950 block">{formatCurrency(m.totalCost)}</span>
+                        {m.discount && m.discount > 0 ? (
+                          <span className="text-xxs text-emerald-600 font-semibold block">
+                            -{formatCurrency(m.discount)} desc.
+                          </span>
+                        ) : null}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {maintenances.map((m) => (
-                      <tr key={m.id}>
-                        <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(m.date)}</td>
-                        <td className="py-3 pr-4 font-bold text-slate-900">{m.description}</td>
-                        <td className="py-3 pr-4 font-medium"><span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase text-xxs">{m.type}</span></td>
-                        <td className="py-3 pr-4">{formatMileage(m.mileage)}</td>
-                        <td className="py-3 pr-4 text-slate-500">{m.workshop || '-'}</td>
-                        <td className="py-3 pr-4 text-slate-500 font-medium">
-                          {m.paymentMethod === 'À vista' || !m.paymentMethod ? (
-                            <span className="text-slate-600">À vista</span>
-                          ) : m.installmentCount && m.installmentValue ? (
-                            <span className="text-slate-800 font-semibold">
-                              A prazo ({m.installmentCount}x de {formatCurrency(m.installmentValue)})
-                            </span>
-                          ) : (
-                            <span className="text-slate-600">{m.paymentMethod}</span>
-                          )}
-                        </td>
-                        <td className="py-3 text-right">
-                          <span className="font-extrabold text-slate-950 block">{formatCurrency(m.totalCost)}</span>
-                          {m.discount && m.discount > 0 ? (
-                            <span className="text-xxs text-emerald-600 font-semibold block">
-                              -{formatCurrency(m.discount)} desc.
-                            </span>
-                          ) : null}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Fuel Records Extrato */}
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3.5 mb-4">
+            <Fuel className="h-4.5 w-4.5 text-emerald-600" />
+            <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Abastecimentos ({fuelRecords.length})</h2>
           </div>
 
-          {/* Fuel Records Extrato */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3.5 mb-4">
-              <Fuel className="h-4.5 w-4.5 text-emerald-600" />
-              <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Abastecimentos ({fuelRecords.length})</h2>
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3, 4].map(n => (
+                <div key={n} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0 gap-4">
+                  <div className="h-4 bg-slate-100 rounded w-16"></div>
+                  <div className="h-4 bg-slate-200 rounded w-16"></div>
+                  <div className="h-4 bg-slate-100 rounded w-12"></div>
+                  <div className="h-4 bg-slate-100 rounded w-12"></div>
+                  <div className="h-4 bg-slate-100 rounded w-12"></div>
+                  <div className="h-4 bg-slate-100 rounded w-12"></div>
+                  <div className="h-4 bg-slate-100 rounded w-20"></div>
+                  <div className="h-4 bg-slate-200 rounded w-16"></div>
+                </div>
+              ))}
             </div>
-
-            {fuelRecords.length === 0 ? (
-              <p className="text-slate-400 italic text-xs py-4 text-center">Nenhum registro encontrado para os filtros ativos.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
-                      <th className="pb-3 pr-4">Data</th>
-                      <th className="pb-3 pr-4">Combustível</th>
-                      <th className="pb-3 pr-4">Odômetro</th>
-                      <th className="pb-3 pr-4">Preço/L</th>
-                      <th className="pb-3 pr-4">Litros</th>
-                      <th className="pb-3 pr-4">Consumo</th>
-                      <th className="pb-3 pr-4">Posto</th>
-                      <th className="pb-3 text-right">Total</th>
+          ) : fuelRecords.length === 0 ? (
+            <p className="text-slate-400 italic text-xs py-4 text-center">Nenhum registro encontrado para os filtros ativos.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
+                    <th className="pb-3 pr-4">Data</th>
+                    <th className="pb-3 pr-4">Combustível</th>
+                    <th className="pb-3 pr-4">Odômetro</th>
+                    <th className="pb-3 pr-4">Preço/L</th>
+                    <th className="pb-3 pr-4">Litros</th>
+                    <th className="pb-3 pr-4">Consumo</th>
+                    <th className="pb-3 pr-4">Posto</th>
+                    <th className="pb-3 pr-4">Pagamento</th>
+                    <th className="pb-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {fuelRecords.map((f) => (
+                    <tr key={f.id}>
+                      <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(f.date)}</td>
+                      <td className="py-3 pr-4 font-bold text-slate-900">{f.fuelType}</td>
+                      <td className="py-3 pr-4">{formatMileage(f.mileage)}</td>
+                      <td className="py-3 pr-4">{formatCurrency(f.pricePerLiter)}</td>
+                      <td className="py-3 pr-4">{f.liters.toFixed(2)} L</td>
+                      <td className="py-3 pr-4 font-bold text-amber-600">{f.consumptionKmPerLiter ? formatConsumption(f.consumptionKmPerLiter) : '-'}</td>
+                      <td className="py-3 pr-4 text-slate-500">{f.gasStation || '-'}</td>
+                      <td className="py-3 pr-4 text-slate-500 font-medium">
+                        {f.paymentMethod === 'À vista' || !f.paymentMethod ? (
+                          <span className="text-slate-600">À vista</span>
+                        ) : f.installmentCount && f.installmentValue ? (
+                          <span className="text-slate-800 font-semibold">
+                            A prazo ({f.installmentCount}x de {formatCurrency(f.installmentValue)})
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">{f.paymentMethod}</span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right font-extrabold text-slate-950">{formatCurrency(f.totalPrice)}</td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {fuelRecords.map((f) => (
-                      <tr key={f.id}>
-                        <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(f.date)}</td>
-                        <td className="py-3 pr-4 font-bold text-slate-900">{f.fuelType}</td>
-                        <td className="py-3 pr-4">{formatMileage(f.mileage)}</td>
-                        <td className="py-3 pr-4">{formatCurrency(f.pricePerLiter)}</td>
-                        <td className="py-3 pr-4">{f.liters.toFixed(2)} L</td>
-                        <td className="py-3 pr-4 font-bold text-amber-600">{f.consumptionKmPerLiter ? formatConsumption(f.consumptionKmPerLiter) : '-'}</td>
-                        <td className="py-3 pr-4 text-slate-500">{f.gasStation || '-'}</td>
-                        <td className="py-3 text-right font-extrabold text-slate-950">{formatCurrency(f.totalPrice)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

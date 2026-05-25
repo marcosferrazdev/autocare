@@ -105,6 +105,9 @@ export const FuelRecordSchema = z.object({
   gasStation: z.string().optional().nullable().or(z.literal('')),
   city: z.string().optional().nullable().or(z.literal('')),
   fullTank: z.boolean().default(false),
+  paymentMethod: z.string().optional().nullable().or(z.literal('')),
+  installmentCount: z.coerce.number().int().min(1).optional().nullable(),
+  installmentValue: z.coerce.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable().or(z.literal('')),
 });
 

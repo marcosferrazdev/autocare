@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FuelRecordSchema } from '@/lib/validations';
 import { formatCurrency } from '@/lib/formatters';
-import { ArrowLeft, Loader2, Save, Fuel, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Fuel, AlertCircle, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { z } from 'zod';
 
@@ -40,6 +40,9 @@ export default function EditFuelRecordPage() {
       gasStation: '',
       city: '',
       fullTank: false,
+      paymentMethod: 'À vista',
+      installmentCount: 1,
+      installmentValue: 0,
       notes: '',
     },
   });
@@ -77,6 +80,9 @@ export default function EditFuelRecordPage() {
           gasStation: record.gasStation || '',
           city: record.city || '',
           fullTank: record.fullTank,
+          paymentMethod: record.paymentMethod || 'À vista',
+          installmentCount: record.installmentCount || 1,
+          installmentValue: record.installmentValue || 0,
           notes: record.notes || '',
         });
 
@@ -100,35 +106,86 @@ export default function EditFuelRecordPage() {
   // Assistir valores para cálculo em tempo real
   const pricePerLiter = watch('pricePerLiter') || 0;
   const liters = watch('liters') || 0;
-  const totalPrice = Number(pricePerLiter) * Number(liters);
+  const paymentMethod = watch('paymentMethod') || 'À vista';
+  const installmentCount = watch('installmentCount') || 1;
+  const installmentValue = watch('installmentValue') || 0;
+  const isInstallment = paymentMethod !== 'À vista';
 
-  // Manipuladores para sincronização bidirecional de valores
+  // Manipuladores de eventos para sincronização explícita e controle preciso
+  const handlePaymentMethodChange = (method: string) => {
+    const pPerLiter = Number(watch('pricePerLiter') || 0);
+    const lts = Number(watch('liters') || 0);
+    const count = Number(watch('installmentCount') || 1);
+    const baseCost = pPerLiter * lts;
+
+    if (method === 'A prazo') {
+      const computedInstallmentValue = Number((baseCost / count).toFixed(2));
+      setValue('installmentValue', computedInstallmentValue, { shouldValidate: true });
+    } else {
+      setTotalPaid(Number(baseCost.toFixed(2)));
+    }
+  };
+
   const handleTotalPaidChange = (eVal: string) => {
     setTotalPaid(eVal);
     const val = Number(eVal);
-    if (liters > 0 && val > 0) {
-      const computedPrice = Number((val / liters).toFixed(3));
+    const lts = Number(watch('liters') || 0);
+    if (lts > 0 && val > 0) {
+      const computedPrice = Number((val / lts).toFixed(3));
       setValue('pricePerLiter', computedPrice, { shouldValidate: true });
     }
   };
 
   const handleLitersChange = (eVal: string) => {
     const val = Number(eVal);
-    if (Number(totalPaid) > 0 && val > 0) {
-      const computedPrice = Number((Number(totalPaid) / val).toFixed(3));
-      setValue('pricePerLiter', computedPrice, { shouldValidate: true });
-    } else if (pricePerLiter > 0 && val > 0) {
-      const computedTotal = Number((pricePerLiter * val).toFixed(2));
-      setTotalPaid(computedTotal);
+    const pPerLiter = Number(watch('pricePerLiter') || 0);
+    const count = Number(watch('installmentCount') || 1);
+    
+    if (paymentMethod === 'À vista') {
+      if (Number(totalPaid) > 0 && val > 0) {
+        const computedPrice = Number((Number(totalPaid) / val).toFixed(3));
+        setValue('pricePerLiter', computedPrice, { shouldValidate: true });
+      } else if (pPerLiter > 0 && val > 0) {
+        const computedTotal = Number((pPerLiter * val).toFixed(2));
+        setTotalPaid(computedTotal);
+      }
+    } else {
+      // A prazo: atualiza o valor da parcela sugerido sem tocar em pricePerLiter
+      if (pPerLiter > 0 && val > 0) {
+        const computedTotal = pPerLiter * val;
+        const computedInstallmentValue = Number((computedTotal / count).toFixed(2));
+        setValue('installmentValue', computedInstallmentValue, { shouldValidate: true });
+      }
     }
   };
 
   const handlePricePerLiterChange = (eVal: string) => {
     const val = Number(eVal);
-    if (liters > 0 && val > 0) {
-      const computedTotal = Number((val * liters).toFixed(2));
-      setTotalPaid(computedTotal);
+    const lts = Number(watch('liters') || 0);
+    const count = Number(watch('installmentCount') || 1);
+
+    if (paymentMethod === 'À vista') {
+      if (lts > 0 && val > 0) {
+        const computedTotal = Number((val * lts).toFixed(2));
+        setTotalPaid(computedTotal);
+      }
+    } else {
+      // A prazo: atualiza o valor da parcela sugerido sem tocar em pricePerLiter
+      if (lts > 0 && val > 0) {
+        const computedTotal = val * lts;
+        const computedInstallmentValue = Number((computedTotal / count).toFixed(2));
+        setValue('installmentValue', computedInstallmentValue, { shouldValidate: true });
+      }
     }
+  };
+
+  const handleInstallmentCountChange = (eVal: string) => {
+    const count = Number(eVal) || 1;
+    const pPerLiter = Number(watch('pricePerLiter') || 0);
+    const lts = Number(watch('liters') || 0);
+    const computedTotal = pPerLiter * lts;
+    const computedInstallmentValue = Number((computedTotal / count).toFixed(2));
+    setValue('installmentValue', computedInstallmentValue, { shouldValidate: true });
   };
 
   const onSubmit = async (data: FuelFormValues) => {
@@ -162,6 +219,12 @@ export default function EditFuelRecordPage() {
       </div>
     );
   }
+
+  // Preço calculado em tempo real para o banner final
+  const basePrice = Number(pricePerLiter) * Number(liters);
+  const displayTotal = isInstallment && Number(installmentValue) > 0
+    ? Number(installmentCount) * Number(installmentValue)
+    : (totalPaid ? Number(totalPaid) : basePrice);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -253,8 +316,9 @@ export default function EditFuelRecordPage() {
             <input
               type="number"
               step="any"
+              disabled={isInstallment}
               placeholder="Quanto você pagou? Ex: 200.00"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold disabled:opacity-75"
               value={totalPaid}
               onChange={(e) => handleTotalPaidChange(e.target.value)}
             />
@@ -288,10 +352,53 @@ export default function EditFuelRecordPage() {
               })}
             />
             <p className="text-slate-400 text-[9px] mt-1 font-medium">
-              Ao preencher a quantidade de litros e o valor pago, o valor por litro é calculado automaticamente (com 3 casas decimais).
+              Ao preencher a quantidade de litros e o valor pago, o valor por litro é calculated automaticamente (com 3 casas decimais).
             </p>
             {errors.pricePerLiter && <p className="text-red-600 text-[9px] mt-1.5 font-semibold">{errors.pricePerLiter.message}</p>}
           </div>
+
+          {/* Forma de Pagamento */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider font-bold">Forma de Pagamento</label>
+            <select
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
+              {...register('paymentMethod', {
+                onChange: (e) => handlePaymentMethodChange(e.target.value)
+              })}
+            >
+              <option value="À vista">À vista</option>
+              <option value="A prazo">A prazo</option>
+            </select>
+          </div>
+
+          {/* Parcelamento Condicional */}
+          {isInstallment && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl animate-fade-in md:col-span-2">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider font-bold">Número de Parcelas</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
+                  {...register('installmentCount', {
+                    onChange: (e) => handleInstallmentCountChange(e.target.value)
+                  })}
+                />
+                {errors.installmentCount && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.installmentCount.message}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider font-bold text-blue-700">Valor da Parcela (R$)</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="w-full bg-white border border-blue-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
+                  {...register('installmentValue')}
+                />
+                {errors.installmentValue && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.installmentValue.message}</p>}
+              </div>
+            </div>
+          )}
 
           {/* Posto de Combustível */}
           <div>
@@ -320,7 +427,7 @@ export default function EditFuelRecordPage() {
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Observações adicionais</label>
           <textarea
-            rows={3}
+            rows={2}
             placeholder="Alguma nota sobre o abastecimento?"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 resize-none font-medium"
             {...register('notes')}
@@ -329,8 +436,11 @@ export default function EditFuelRecordPage() {
 
         {/* Resumo visual do cálculo */}
         <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between text-xs font-semibold">
-          <span className="text-slate-500">Custo Total Estimado:</span>
-          <span className="text-base font-extrabold text-slate-950">{formatCurrency(totalPrice)}</span>
+          <span className="text-slate-500 flex items-center gap-1.5">
+            <CreditCard className="h-4 w-4 text-slate-500" />
+            Custo Total {isInstallment && '(A prazo)'}:
+          </span>
+          <span className="text-base font-extrabold text-slate-950">{formatCurrency(displayTotal)}</span>
         </div>
 
         {/* Submit */}

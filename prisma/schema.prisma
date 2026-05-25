@@ -87,6 +87,9 @@ model FuelRecord {
   city                  String?
   fullTank              Boolean  @default(false)
   consumptionKmPerLiter Float?
+  paymentMethod         String?  @default("À vista")
+  installmentCount      Int?     @default(1)
+  installmentValue      Float?
   notes                 String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt

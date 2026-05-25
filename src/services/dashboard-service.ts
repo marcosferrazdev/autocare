@@ -119,20 +119,56 @@ export class DashboardService {
 
     // Processa manutenções
     maintenances.forEach(m => {
-      const monthYear = `${String(m.date.getUTCMonth() + 1).padStart(2, '0')}/${m.date.getUTCFullYear()}`;
-      if (!expensesByMonthMap[monthYear]) {
-        expensesByMonthMap[monthYear] = { maintenance: 0, fuel: 0 };
+      const isInstallment = m.paymentMethod && m.paymentMethod !== 'À vista';
+      const count = (isInstallment && m.installmentCount && m.installmentCount > 0) ? m.installmentCount : 1;
+      const value = (isInstallment && m.installmentValue && m.installmentValue > 0) 
+        ? m.installmentValue 
+        : (isInstallment ? Number((m.totalCost / count).toFixed(2)) : m.totalCost);
+
+      if (isInstallment && count > 1) {
+        for (let i = 0; i < count; i++) {
+          const targetDate = new Date(m.date);
+          targetDate.setUTCMonth(m.date.getUTCMonth() + i);
+          const monthYear = `${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}/${targetDate.getUTCFullYear()}`;
+          if (!expensesByMonthMap[monthYear]) {
+            expensesByMonthMap[monthYear] = { maintenance: 0, fuel: 0 };
+          }
+          expensesByMonthMap[monthYear].maintenance += value;
+        }
+      } else {
+        const monthYear = `${String(m.date.getUTCMonth() + 1).padStart(2, '0')}/${m.date.getUTCFullYear()}`;
+        if (!expensesByMonthMap[monthYear]) {
+          expensesByMonthMap[monthYear] = { maintenance: 0, fuel: 0 };
+        }
+        expensesByMonthMap[monthYear].maintenance += m.totalCost;
       }
-      expensesByMonthMap[monthYear].maintenance += m.totalCost;
     });
 
     // Processa abastecimentos
     fuelRecords.forEach(f => {
-      const monthYear = `${String(f.date.getUTCMonth() + 1).padStart(2, '0')}/${f.date.getUTCFullYear()}`;
-      if (!expensesByMonthMap[monthYear]) {
-        expensesByMonthMap[monthYear] = { maintenance: 0, fuel: 0 };
+      const isInstallment = f.paymentMethod && f.paymentMethod !== 'À vista';
+      const count = (isInstallment && f.installmentCount && f.installmentCount > 0) ? f.installmentCount : 1;
+      const value = (isInstallment && f.installmentValue && f.installmentValue > 0) 
+        ? f.installmentValue 
+        : (isInstallment ? Number((f.totalPrice / count).toFixed(2)) : f.totalPrice);
+
+      if (isInstallment && count > 1) {
+        for (let i = 0; i < count; i++) {
+          const targetDate = new Date(f.date);
+          targetDate.setUTCMonth(f.date.getUTCMonth() + i);
+          const monthYear = `${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}/${targetDate.getUTCFullYear()}`;
+          if (!expensesByMonthMap[monthYear]) {
+            expensesByMonthMap[monthYear] = { maintenance: 0, fuel: 0 };
+          }
+          expensesByMonthMap[monthYear].fuel += value;
+        }
+      } else {
+        const monthYear = `${String(f.date.getUTCMonth() + 1).padStart(2, '0')}/${f.date.getUTCFullYear()}`;
+        if (!expensesByMonthMap[monthYear]) {
+          expensesByMonthMap[monthYear] = { maintenance: 0, fuel: 0 };
+        }
+        expensesByMonthMap[monthYear].fuel += f.totalPrice;
       }
-      expensesByMonthMap[monthYear].fuel += f.totalPrice;
     });
 
     const monthlyExpenses = Object.entries(expensesByMonthMap)

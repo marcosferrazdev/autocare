@@ -11,6 +11,9 @@ export interface CreateFuelRecordInput {
   gasStation?: string | null;
   city?: string | null;
   fullTank: boolean;
+  paymentMethod?: string | null;
+  installmentCount?: number | null;
+  installmentValue?: number | null;
   notes?: string | null;
 }
 
@@ -128,7 +131,12 @@ export class FuelRecordService {
   static async create(carId: string, userId: string, input: CreateFuelRecordInput) {
     await this.verifyCarOwner(carId, userId);
 
-    const totalPrice = calculateFuelRecordTotal(input.pricePerLiter, input.liters);
+    const hasInstallmentValue = input.installmentValue !== undefined && input.installmentValue !== null && input.installmentValue > 0;
+    const isInstallment = input.paymentMethod && input.paymentMethod !== 'À vista';
+    
+    const totalPrice = (isInstallment && hasInstallmentValue)
+      ? Number(((input.installmentCount || 1) * input.installmentValue!).toFixed(2))
+      : calculateFuelRecordTotal(input.pricePerLiter, input.liters);
 
     return prisma.$transaction(async (tx) => {
       const record = await tx.fuelRecord.create({
@@ -143,6 +151,9 @@ export class FuelRecordService {
           gasStation: input.gasStation || null,
           city: input.city || null,
           fullTank: input.fullTank,
+          paymentMethod: input.paymentMethod || "À vista",
+          installmentCount: input.installmentCount || 1,
+          installmentValue: input.installmentValue || null,
           notes: input.notes || null,
         },
       });
@@ -167,7 +178,12 @@ export class FuelRecordService {
       throw new Error('Registro de abastecimento não encontrado ou acesso não autorizado.');
     }
 
-    const totalPrice = calculateFuelRecordTotal(input.pricePerLiter, input.liters);
+    const hasInstallmentValue = input.installmentValue !== undefined && input.installmentValue !== null && input.installmentValue > 0;
+    const isInstallment = input.paymentMethod && input.paymentMethod !== 'À vista';
+    
+    const totalPrice = (isInstallment && hasInstallmentValue)
+      ? Number(((input.installmentCount || 1) * input.installmentValue!).toFixed(2))
+      : calculateFuelRecordTotal(input.pricePerLiter, input.liters);
 
     return prisma.$transaction(async (tx) => {
       const updatedRecord = await tx.fuelRecord.update({
@@ -182,6 +198,9 @@ export class FuelRecordService {
           gasStation: input.gasStation || null,
           city: input.city || null,
           fullTank: input.fullTank,
+          paymentMethod: input.paymentMethod || "À vista",
+          installmentCount: input.installmentCount || 1,
+          installmentValue: input.installmentValue || null,
           notes: input.notes || null,
         },
       });
