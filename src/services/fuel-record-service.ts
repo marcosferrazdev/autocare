@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { calculateFuelRecordTotal, calculateFuelConsumption } from '@/lib/calculations';
 import { FuelRecord, Prisma } from '@prisma/client';
+import { CarService } from './car-service';
 
 export interface CreateFuelRecordInput {
   date: Date | string;
@@ -57,17 +58,8 @@ export class FuelRecordService {
       }
     }
 
-    // Atualiza a quilometragem do carro com o maior valor encontrado nos abastecimentos
-    if (records.length > 0) {
-      const maxMileageRecord = records[records.length - 1];
-      const car = await tx.car.findUnique({ where: { id: carId } });
-      if (car && maxMileageRecord.mileage > car.currentMileage) {
-        await tx.car.update({
-          where: { id: carId },
-          data: { currentMileage: maxMileageRecord.mileage },
-        });
-      }
-    }
+    // Atualiza a quilometragem do carro com base no registro mais recente (abastecimento ou manutenção)
+    await CarService.updateCarMileage(carId, tx);
   }
 
   /**

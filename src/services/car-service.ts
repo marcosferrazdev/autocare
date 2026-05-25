@@ -71,4 +71,50 @@ export class CarService {
       where: { id },
     });
   }
+
+  /**
+   * Atualiza a quilometragem atual do carro com base no registro mais recente (abastecimento ou manutenção).
+   */
+  static async updateCarMileage(carId: string, tx: Prisma.TransactionClient = prisma): Promise<void> {
+    const latestFuel = await tx.fuelRecord.findFirst({
+      where: { carId },
+      orderBy: [
+        { date: 'desc' },
+        { mileage: 'desc' }
+      ],
+    });
+
+    const latestMaintenance = await tx.maintenance.findFirst({
+      where: { carId },
+      orderBy: [
+        { date: 'desc' },
+        { mileage: 'desc' }
+      ],
+    });
+
+    let newMileage = 0;
+
+    if (latestFuel && latestMaintenance) {
+      const fuelDate = new Date(latestFuel.date).getTime();
+      const maintDate = new Date(latestMaintenance.date).getTime();
+      if (fuelDate > maintDate) {
+        newMileage = latestFuel.mileage;
+      } else if (maintDate > fuelDate) {
+        newMileage = latestMaintenance.mileage;
+      } else {
+        newMileage = Math.max(latestFuel.mileage, latestMaintenance.mileage);
+      }
+    } else if (latestFuel) {
+      newMileage = latestFuel.mileage;
+    } else if (latestMaintenance) {
+      newMileage = latestMaintenance.mileage;
+    }
+
+    if (newMileage > 0) {
+      await tx.car.update({
+        where: { id: carId },
+        data: { currentMileage: newMileage },
+      });
+    }
+  }
 }

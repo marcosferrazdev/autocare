@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { calculatePartTotal, calculateTotalPartsCost, calculateMaintenanceTotal } from '@/lib/calculations';
 import { Maintenance, MaintenancePart, Prisma } from '@prisma/client';
+import { CarService } from './car-service';
 
 export interface MaintenancePartInput {
   name: string;
@@ -130,38 +131,35 @@ export class MaintenanceService {
 
     totalCost = Math.max(0, Number((totalCost - discount).toFixed(2)));
 
-    // Atualiza quilometragem atual do carro caso a manutenção tenha quilometragem maior
-    const car = await prisma.car.findUnique({ where: { id: carId } });
-    if (car && input.mileage > car.currentMileage) {
-      await prisma.car.update({
-        where: { id: carId },
-        data: { currentMileage: input.mileage },
-      });
-    }
-
-    return prisma.maintenance.create({
-      data: {
-        carId,
-        date: new Date(input.date),
-        mileage: input.mileage,
-        type: input.type,
-        workshop: input.workshop || null,
-        description: input.description,
-        laborCost: input.laborCost,
-        totalPartsCost,
-        totalCost,
-        discount,
-        paymentMethod: input.paymentMethod || "À vista",
-        installmentCount: input.installmentCount || 1,
-        installmentValue: input.installmentValue || null,
-        notes: input.notes || null,
-        parts: {
-          create: partsData,
+    // Atualiza a quilometragem do carro caso a manutenção seja o evento mais recente
+    return prisma.$transaction(async (tx) => {
+      const createdMaint = await tx.maintenance.create({
+        data: {
+          carId,
+          date: new Date(input.date),
+          mileage: input.mileage,
+          type: input.type,
+          workshop: input.workshop || null,
+          description: input.description,
+          laborCost: input.laborCost,
+          totalPartsCost,
+          totalCost,
+          discount,
+          paymentMethod: input.paymentMethod || "À vista",
+          installmentCount: input.installmentCount || 1,
+          installmentValue: input.installmentValue || null,
+          notes: input.notes || null,
+          parts: {
+            create: partsData,
+          },
         },
-      },
-      include: {
-        parts: true,
-      },
+        include: {
+          parts: true,
+        },
+      });
+
+      await CarService.updateCarMileage(carId, tx);
+      return createdMaint;
     });
   }
 
@@ -206,15 +204,7 @@ export class MaintenanceService {
 
     totalCost = Math.max(0, Number((totalCost - discount).toFixed(2)));
 
-    // Atualiza quilometragem atual do carro caso a manutenção tenha quilometragem maior
-    if (input.mileage > maintenance.car.currentMileage) {
-      await prisma.car.update({
-        where: { id: carId },
-        data: { currentMileage: input.mileage },
-      });
-    }
-
-    // Executa em transação para garantir que peças antigas sejam deletadas e novas criadas
+    // Executa em transação para garantir consistência
     return prisma.$transaction(async (tx) => {
       // Deletar peças antigas
       await tx.maintenancePart.deleteMany({
@@ -222,7 +212,7 @@ export class MaintenanceService {
       });
 
       // Atualizar manutenção e recriar peças
-      return tx.maintenance.update({
+      const updatedMaint = await tx.maintenance.update({
         where: { id },
         data: {
           date: new Date(input.date),
@@ -246,6 +236,11 @@ export class MaintenanceService {
           parts: true,
         },
       });
+
+      // Atualiza a quilometragem do carro com base no registro mais recente
+      await CarService.updateCarMileage(carId, tx);
+
+      return updatedMaint;
     });
   }
 
@@ -262,8 +257,15 @@ export class MaintenanceService {
       throw new Error('Manutenção não encontrada ou acesso não autorizado.');
     }
 
-    return prisma.maintenance.delete({
-      where: { id },
+    return prisma.$transaction(async (tx) => {
+      const deletedMaint = await tx.maintenance.delete({
+        where: { id },
+      });
+
+      // Atualiza a quilometragem do carro com base no registro mais recente
+      await CarService.updateCarMileage(maintenance.carId, tx);
+
+      return deletedMaint;
     });
   }
 
