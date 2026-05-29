@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
+import { RodaNexoLogo } from '@/components/logo';
 import { Car, Wrench, Fuel, BarChart3, ShieldCheck, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function Home() {
@@ -12,10 +13,7 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-blue-600">
-            <Car className="h-6 w-6" />
-            <span>AutoCare<span className="text-slate-800 font-medium">Manager</span></span>
-          </div>
+          <RodaNexoLogo size="md" />
 
           <nav className="flex items-center gap-4">
             {loading ? (
@@ -148,7 +146,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-slate-50 text-slate-400 py-8 text-center text-sm">
-        <p>&copy; {new Date().getFullYear()} AutoCare Manager. Todos os direitos reservados.</p>
+        <p>&copy; {new Date().getFullYear()} RodaNexo. Todos os direitos reservados.</p>
       </footer>
     </div>
   );

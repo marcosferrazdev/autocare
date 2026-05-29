@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { CarProvider, useCar } from '@/components/providers/car-provider';
+import { RodaNexoLogo } from '@/components/logo';
 import {
   Car,
   Wrench,
@@ -59,10 +60,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0 sticky top-0 h-screen">
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0">
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg tracking-tight text-blue-600">
-            <Car className="h-5.5 w-5.5" />
-            <span>AutoCare<span className="text-slate-800 font-medium">Manager</span></span>
-          </Link>
+          <RodaNexoLogo size="sm" href="/dashboard" />
         </div>
 
         {/* Navigation */}
@@ -109,10 +107,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Header / Navbar */}
       <header className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-40 shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg tracking-tight text-blue-600">
-          <Car className="h-5.5 w-5.5" />
-          <span>AutoCare<span className="text-slate-800 font-medium">Manager</span></span>
-        </Link>
+        <RodaNexoLogo size="sm" href="/dashboard" />
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-50 transition-all"

@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { RegisterSchema } from '@/lib/validations';
 import { useAuth } from '@/components/providers/auth-provider';
+import { RodaNexoLogo } from '@/components/logo';
 import { Car, Loader2, AlertCircle } from 'lucide-react';
 import { z } from 'zod';
 
@@ -44,10 +45,7 @@ export default function RegisterPage() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 items-center justify-center p-6">
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-2 font-bold text-2xl tracking-tight text-blue-600 mb-8">
-        <Car className="h-7 w-7" />
-        <span>AutoCare<span className="text-slate-800 font-medium">Manager</span></span>
-      </Link>
+      <RodaNexoLogo size="lg" href="/" className="mb-8" />
 
       {/* Card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-100 max-w-md w-full p-8">

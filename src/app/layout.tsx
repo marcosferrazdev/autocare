@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AutoCare Manager",
+  title: "RodaNexo",
   description: "Gerenciamento completo e inteligente da vida útil, gastos e manutenção do seu veículo.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

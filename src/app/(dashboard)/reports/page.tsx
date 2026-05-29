@@ -167,7 +167,7 @@ export default function ReportsPage() {
 
       {/* Printable Header */}
       <div className="hidden print:block border-b border-slate-300 pb-4 mb-6">
-        <h1 className="text-2xl font-extrabold text-slate-900">Relatório Consolidado - AutoCare Manager</h1>
+        <h1 className="text-2xl font-extrabold text-slate-900">Relatório Consolidado - RodaNexo</h1>
         <p className="text-sm text-slate-600 mt-1">
           Veículo: {selectedCar?.brand} {selectedCar?.model} • Placa: {selectedCar?.plate || 'Não informada'}
         </p>
