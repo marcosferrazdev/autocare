@@ -276,6 +276,7 @@ export default function EditFuelRecordPage() {
               type="number"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
               {...register('mileage')}
+              onFocus={(e) => e.target.select()}
             />
             {errors.mileage && <p className="text-red-600 text-xxs mt-1.5 font-semibold">{errors.mileage.message}</p>}
           </div>
@@ -321,6 +322,7 @@ export default function EditFuelRecordPage() {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold disabled:opacity-75"
               value={totalPaid}
               onChange={(e) => handleTotalPaidChange(e.target.value)}
+              onFocus={(e) => e.target.select()}
             />
           </div>
 
@@ -335,6 +337,7 @@ export default function EditFuelRecordPage() {
               {...register('liters', {
                 onChange: (e) => handleLitersChange(e.target.value)
               })}
+              onFocus={(e) => e.target.select()}
             />
             {errors.liters && <p className="text-red-600 text-[9px] mt-1.5 font-semibold">{errors.liters.message}</p>}
           </div>
@@ -350,6 +353,7 @@ export default function EditFuelRecordPage() {
               {...register('pricePerLiter', {
                 onChange: (e) => handlePricePerLiterChange(e.target.value)
               })}
+              onFocus={(e) => e.target.select()}
             />
             <p className="text-slate-400 text-[9px] mt-1 font-medium">
               Ao preencher a quantidade de litros e o valor pago, o valor por litro é calculated automaticamente (com 3 casas decimais).
@@ -383,6 +387,7 @@ export default function EditFuelRecordPage() {
                   {...register('installmentCount', {
                     onChange: (e) => handleInstallmentCountChange(e.target.value)
                   })}
+                  onFocus={(e) => e.target.select()}
                 />
                 {errors.installmentCount && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.installmentCount.message}</p>}
               </div>
@@ -394,6 +399,7 @@ export default function EditFuelRecordPage() {
                   step="any"
                   className="w-full bg-white border border-blue-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
                   {...register('installmentValue')}
+                  onFocus={(e) => e.target.select()}
                 />
                 {errors.installmentValue && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.installmentValue.message}</p>}
               </div>
