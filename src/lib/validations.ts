@@ -133,4 +133,5 @@ export const UpgradeItemSchema = z.object({
   estimatedValue: z.coerce.number().min(0).optional().nullable(),
   purchaseLink: z.string().optional().nullable().or(z.literal('')),
   status: z.enum(['Pendente', 'Concluido']).default('Pendente'),
+  priority: z.enum(['Baixa', 'Média', 'Alta']).default('Média'),
 });

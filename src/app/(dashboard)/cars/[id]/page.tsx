@@ -158,7 +158,9 @@ export default function CarDetailPage() {
 
   // Estados do formulário de melhorias / wishlist e controle de abas
   const [activeTab, setActiveTab] = useState<'historico' | 'upgrades'>('historico');
+  const [sortBy, setSortBy] = useState<'recent' | 'priority' | 'price-asc' | 'price-desc' | 'alphabetical'>('recent');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [submittingUpgrade, setSubmittingUpgrade] = useState(false);
   const [editingUpgrade, setEditingUpgrade] = useState<any | null>(null);
   const [upgradeForm, setUpgradeForm] = useState({
     name: '',
@@ -166,6 +168,7 @@ export default function CarDetailPage() {
     estimatedValue: '',
     purchaseLink: '',
     status: 'Pendente' as 'Pendente' | 'Concluido',
+    priority: 'Média' as 'Baixa' | 'Média' | 'Alta',
   });
 
   // Estados do formulário de informação técnica (sugestões da web)
@@ -189,6 +192,7 @@ export default function CarDetailPage() {
       estimatedValue: '',
       purchaseLink: '',
       status: 'Pendente',
+      priority: 'Média',
     });
     setShowUpgradeModal(true);
   };
@@ -201,6 +205,7 @@ export default function CarDetailPage() {
       estimatedValue: item.estimatedValue !== null && item.estimatedValue !== undefined ? String(item.estimatedValue) : '',
       purchaseLink: item.purchaseLink || '',
       status: item.status || 'Pendente',
+      priority: item.priority || 'Média',
     });
     setShowUpgradeModal(true);
   };
@@ -210,7 +215,7 @@ export default function CarDetailPage() {
     if (!upgradeForm.name.trim()) return;
 
     try {
-      setLoading(true);
+      setSubmittingUpgrade(true);
       setError(null);
 
       const payload = {
@@ -219,6 +224,7 @@ export default function CarDetailPage() {
         estimatedValue: upgradeForm.estimatedValue ? Number(upgradeForm.estimatedValue) : null,
         purchaseLink: upgradeForm.purchaseLink || null,
         status: upgradeForm.status,
+        priority: upgradeForm.priority,
       };
 
       if (editingUpgrade) {
@@ -246,7 +252,7 @@ export default function CarDetailPage() {
       console.error(err);
       setError(err.message || 'Erro ao salvar item.');
     } finally {
-      setLoading(false);
+      setSubmittingUpgrade(false);
     }
   };
 
@@ -767,17 +773,33 @@ export default function CarDetailPage() {
       ) : (
         /* Upgrades / Wishlist Tab View */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3">
             <div className="flex items-center gap-2">
               <ListTodo className="h-5 w-5 text-blue-600" />
               <h2 className="font-bold text-slate-800 text-sm">Lista de Melhorias, Reformas e Compras</h2>
             </div>
-            <button
-              onClick={handleOpenAddUpgrade}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-[12px] transition-all shadow flex items-center gap-1 hover:shadow-md"
-            >
-              <Plus className="h-4 w-4" /> Adicionar Item
-            </button>
+            <div className="flex items-center gap-3.5 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Ordenar por:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-700 cursor-pointer focus:outline-none focus:border-blue-500"
+                >
+                  <option value="recent">Mais Recentes</option>
+                  <option value="priority">Prioridade (Alta → Baixa)</option>
+                  <option value="price-asc">Valor (Menor → Maior)</option>
+                  <option value="price-desc">Valor (Maior → Menor)</option>
+                  <option value="alphabetical">Nome (A-Z)</option>
+                </select>
+              </div>
+              <button
+                onClick={handleOpenAddUpgrade}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-[12px] transition-all shadow flex items-center gap-1 hover:shadow-md shrink-0"
+              >
+                <Plus className="h-4 w-4" /> Adicionar Item
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -813,90 +835,132 @@ export default function CarDetailPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {upgrades.map((item) => (
-                <div
-                  key={item.id}
-                  className={`p-4 border rounded-xl flex gap-3 items-start transition-all relative ${item.status === 'Concluido'
-                    ? 'bg-slate-50/60 border-slate-200 opacity-75'
-                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                    }`}
-                >
-                  {/* Status Toggle Button */}
-                  <button
-                    onClick={() => handleToggleUpgradeStatus(item)}
-                    className="p-0.5 hover:bg-slate-100 rounded-full transition-all shrink-0 mt-0.5"
-                    title={item.status === 'Pendente' ? 'Marcar como Concluído' : 'Marcar como Pendente'}
+              {(() => {
+                const sortedUpgrades = [...upgrades].sort((a, b) => {
+                  if (sortBy === 'recent') {
+                    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+                  }
+                  if (sortBy === 'priority') {
+                    const priorityOrder = { 'Alta': 3, 'Média': 2, 'Baixa': 1 };
+                    const pA = priorityOrder[a.priority as 'Alta' | 'Média' | 'Baixa'] || 2;
+                    const pB = priorityOrder[b.priority as 'Alta' | 'Média' | 'Baixa'] || 2;
+                    if (pA !== pB) {
+                      return pB - pA; // High priority first
+                    }
+                    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+                  }
+                  if (sortBy === 'price-asc') {
+                    const valA = a.estimatedValue ?? Infinity;
+                    const valB = b.estimatedValue ?? Infinity;
+                    if (valA !== valB) return valA - valB;
+                    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+                  }
+                  if (sortBy === 'price-desc') {
+                    const valA = a.estimatedValue ?? -Infinity;
+                    const valB = b.estimatedValue ?? -Infinity;
+                    if (valA !== valB) return valB - valA;
+                    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+                  }
+                  if (sortBy === 'alphabetical') {
+                    return a.name.localeCompare(b.name);
+                  }
+                  return 0;
+                });
+
+                return sortedUpgrades.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`p-4 border rounded-xl flex gap-3 items-start transition-all relative ${item.status === 'Concluido'
+                      ? 'bg-slate-50/60 border-slate-200 opacity-75'
+                      : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                      }`}
                   >
-                    {item.status === 'Concluido' ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 fill-emerald-50" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-slate-400" />
-                    )}
-                  </button>
+                    {/* Status Toggle Button */}
+                    <button
+                      onClick={() => handleToggleUpgradeStatus(item)}
+                      className="p-0.5 hover:bg-slate-100 rounded-full transition-all shrink-0 mt-0.5"
+                      title={item.status === 'Pendente' ? 'Marcar como Concluído' : 'Marcar como Pendente'}
+                    >
+                      {item.status === 'Concluido' ? (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 fill-emerald-50" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-slate-400" />
+                      )}
+                    </button>
 
-                  {item.purchaseLink && (
-                    <LinkThumbnail url={item.purchaseLink} />
-                  )}
-
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs font-bold ${item.status === 'Concluido' ? 'text-slate-500 line-through' : 'text-slate-800'
-                        }`}>
-                        {item.name}
-                      </span>
-                      <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${item.status === 'Concluido'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                        : 'bg-amber-50 text-amber-700 border border-amber-100'
-                        }`}>
-                        {item.status === 'Concluido' ? 'Concluído' : 'Pendente'}
-                      </span>
-                    </div>
-
-                    {item.description && (
-                      <p className={`text-[11px] leading-relaxed ${item.status === 'Concluido' ? 'text-slate-400/80 italic' : 'text-slate-500 font-medium'
-                        }`}>
-                        {item.description}
-                      </p>
+                    {item.purchaseLink && (
+                      <LinkThumbnail url={item.purchaseLink} />
                     )}
 
-                    <div className="flex items-center gap-3.5 text-[10px] text-slate-400 font-semibold pt-1">
-                      {item.estimatedValue !== null && item.estimatedValue !== undefined && (
-                        <span className="text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
-                          Est: {formatCurrency(item.estimatedValue)}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-bold ${item.status === 'Concluido' ? 'text-slate-500 line-through' : 'text-slate-800'
+                          }`}>
+                          {item.name}
                         </span>
+                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${item.status === 'Concluido'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          : 'bg-amber-50 text-amber-700 border border-amber-100'
+                          }`}>
+                          {item.status === 'Concluido' ? 'Concluído' : 'Pendente'}
+                        </span>
+                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase border ${
+                          item.priority === 'Alta'
+                            ? 'bg-rose-50 text-rose-700 border-rose-100'
+                            : item.priority === 'Baixa'
+                            ? 'bg-slate-50 text-slate-600 border-slate-200/60'
+                            : 'bg-blue-50 text-blue-700 border-blue-100'
+                        }`}>
+                          {item.priority || 'Média'}
+                        </span>
+                      </div>
+
+                      {item.description && (
+                        <p className={`text-[11px] leading-relaxed ${item.status === 'Concluido' ? 'text-slate-400/80 italic' : 'text-slate-500 font-medium'
+                          }`}>
+                          {item.description}
+                        </p>
                       )}
-                      {item.purchaseLink && (
-                        <a
-                          href={item.purchaseLink.startsWith('http') ? item.purchaseLink : `https://${item.purchaseLink}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700 flex items-center gap-0.5 hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" /> Link de Compra
-                        </a>
-                      )}
+
+                      <div className="flex items-center gap-3.5 text-[10px] text-slate-400 font-semibold pt-1">
+                        {item.estimatedValue !== null && item.estimatedValue !== undefined && (
+                          <span className="text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
+                            Est: {formatCurrency(item.estimatedValue)}
+                          </span>
+                        )}
+                        {item.purchaseLink && (
+                          <a
+                            href={item.purchaseLink.startsWith('http') ? item.purchaseLink : `https://${item.purchaseLink}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-700 flex items-center gap-0.5 hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" /> Link de Compra
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions (Edit / Delete) */}
+                    <div className="flex items-center gap-1.5 shrink-0 self-start print:hidden">
+                      <button
+                        onClick={() => handleOpenEditUpgrade(item)}
+                        className="p-1 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded transition-all"
+                        title="Editar item"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUpgrade(item.id)}
+                        className="p-1 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded transition-all"
+                        title="Excluir item"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Actions (Edit / Delete) */}
-                  <div className="flex items-center gap-1.5 shrink-0 self-start print:hidden">
-                    <button
-                      onClick={() => handleOpenEditUpgrade(item)}
-                      className="p-1 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded transition-all"
-                      title="Editar item"
-                    >
-                      <Edit className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUpgrade(item.id)}
-                      className="p-1 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded transition-all"
-                      title="Excluir item"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           )}
         </div>
@@ -912,8 +976,9 @@ export default function CarDetailPage() {
               </h3>
               <button
                 type="button"
+                disabled={submittingUpgrade}
                 onClick={() => setShowUpgradeModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs font-semibold"
+                className="text-slate-400 hover:text-slate-600 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Fechar
               </button>
@@ -943,24 +1008,37 @@ export default function CarDetailPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xxs font-bold text-slate-600 uppercase mb-1 tracking-wider">Valor Estimado (R$)</label>
+                  <label className="block text-xxs font-bold text-slate-600 uppercase mb-1 tracking-wider">Valor (R$)</label>
                   <input
                     type="number"
                     step="any"
                     min="0"
                     placeholder="Ex: 850.00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                     value={upgradeForm.estimatedValue}
                     onChange={(e) => setUpgradeForm(prev => ({ ...prev, estimatedValue: e.target.value }))}
                   />
                 </div>
 
                 <div>
+                  <label className="block text-xxs font-bold text-slate-600 uppercase mb-1 tracking-wider">Prioridade</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold cursor-pointer"
+                    value={upgradeForm.priority}
+                    onChange={(e) => setUpgradeForm(prev => ({ ...prev, priority: e.target.value as any }))}
+                  >
+                    <option value="Baixa">Baixa</option>
+                    <option value="Média">Média</option>
+                    <option value="Alta">Alta</option>
+                  </select>
+                </div>
+
+                <div>
                   <label className="block text-xxs font-bold text-slate-600 uppercase mb-1 tracking-wider">Status</label>
                   <select
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold cursor-pointer"
                     value={upgradeForm.status}
                     onChange={(e) => setUpgradeForm(prev => ({ ...prev, status: e.target.value as any }))}
                   >
@@ -984,16 +1062,25 @@ export default function CarDetailPage() {
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={submittingUpgrade}
                   onClick={() => setShowUpgradeModal(false)}
-                  className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-2 rounded-lg text-xxs transition-all shadow-sm"
+                  className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-2 rounded-lg text-xxs transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-xxs transition-all shadow"
+                  disabled={submittingUpgrade}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-xxs transition-all shadow flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Salvar
+                  {submittingUpgrade ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar'
+                  )}
                 </button>
               </div>
             </form>

@@ -7,6 +7,7 @@ export interface CreateUpgradeItemInput {
   estimatedValue?: number | null;
   purchaseLink?: string | null;
   status?: string;
+  priority?: string;
 }
 
 export class UpgradeItemService {
@@ -46,6 +47,7 @@ export class UpgradeItemService {
         estimatedValue: input.estimatedValue || null,
         purchaseLink: input.purchaseLink || null,
         status: input.status || 'Pendente',
+        priority: input.priority || 'Média',
       },
     });
   }
@@ -71,6 +73,7 @@ export class UpgradeItemService {
         estimatedValue: input.estimatedValue !== undefined ? input.estimatedValue : undefined,
         purchaseLink: input.purchaseLink !== undefined ? input.purchaseLink : undefined,
         status: input.status !== undefined ? input.status : undefined,
+        priority: input.priority !== undefined ? input.priority : undefined,
       },
     });
   }

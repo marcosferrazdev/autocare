@@ -113,11 +113,14 @@ export default function CarsPage() {
                   isSelected ? 'ring-2 ring-blue-500 border-transparent' : 'border-slate-200'
                 }`}
               >
-                <div>
+                <Link
+                  href={`/cars/${car.id}`}
+                  className="cursor-pointer group block"
+                >
                   {/* Title & Badge */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <h3 className="font-extrabold text-slate-900 text-lg leading-tight truncate">
+                      <h3 className="font-extrabold text-slate-900 text-lg leading-tight truncate group-hover:text-blue-600 transition-colors">
                         {car.nickname || `${car.brand} ${car.model}`}
                       </h3>
                       <p className="text-slate-400 text-xs mt-0.5 font-medium">
@@ -157,7 +160,7 @@ export default function CarsPage() {
                       </div>
                     )}
                   </div>
-                </div>
+                </Link>
 
                 {/* Card Actions */}
                 <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-6">
