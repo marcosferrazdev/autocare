@@ -272,6 +272,7 @@ export default function EditMaintenancePage() {
                 type="number"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                 {...register('mileage')}
+                onFocus={(e) => e.target.select()}
               />
               {errors.mileage && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.mileage.message}</p>}
             </div>
@@ -319,6 +320,7 @@ export default function EditMaintenancePage() {
                 step="any"
                 className="w-full bg-slate-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                 {...register('laborCost')}
+                onFocus={(e) => e.target.select()}
               />
               {errors.laborCost && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.laborCost.message}</p>}
             </div>
@@ -332,6 +334,7 @@ export default function EditMaintenancePage() {
                 placeholder="Ex: 665.00"
                 className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                 {...register('discount')}
+                onFocus={(e) => e.target.select()}
               />
               {errors.discount && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.discount.message}</p>}
             </div>
@@ -359,6 +362,7 @@ export default function EditMaintenancePage() {
                     min="1"
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
                     {...register('installmentCount')}
+                    onFocus={(e) => e.target.select()}
                   />
                   {errors.installmentCount && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.installmentCount.message}</p>}
                 </div>
@@ -370,6 +374,7 @@ export default function EditMaintenancePage() {
                     step="any"
                     className="w-full bg-white border border-blue-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
                     {...register('installmentValue')}
+                    onFocus={(e) => e.target.select()}
                   />
                   {errors.installmentValue && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.installmentValue.message}</p>}
                 </div>
@@ -398,7 +403,7 @@ export default function EditMaintenancePage() {
             </div>
 
             {/* Simple Inline Fields to Add Part */}
-            <div className="space-y-3 text-xxs">
+            <div className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-600 mb-1">Nome da Peça</label>
                 <input
@@ -430,6 +435,7 @@ export default function EditMaintenancePage() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                     value={newPartQuantity}
                     onChange={(e) => setNewPartQuantity(Number(e.target.value))}
+                    onFocus={(e) => e.target.select()}
                   />
                 </div>
                 <div>
@@ -440,6 +446,7 @@ export default function EditMaintenancePage() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                     value={newPartUnitPrice}
                     onChange={(e) => setNewPartUnitPrice(Number(e.target.value))}
+                    onFocus={(e) => e.target.select()}
                   />
                 </div>
               </div>
@@ -447,7 +454,7 @@ export default function EditMaintenancePage() {
               <button
                 type="button"
                 onClick={handleAddPart}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xxs transition-all flex items-center justify-center gap-1 shadow-sm"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-sm"
               >
                 <Plus className="h-3.5 w-3.5" /> Adicionar Peça na Lista
               </button>
@@ -455,13 +462,13 @@ export default function EditMaintenancePage() {
 
             {/* List of Added Parts */}
             <div className="border-t border-slate-100 pt-3">
-              <h3 className="font-bold text-slate-500 text-xxs mb-2 tracking-wide uppercase">Peças na Lista ({parts.length})</h3>
+              <h3 className="font-bold text-slate-500 text-xs mb-2 tracking-wide uppercase">Peças na Lista ({parts.length})</h3>
               {parts.length === 0 ? (
-                <p className="text-slate-400 italic text-xxs py-2">Nenhuma peça adicionada ainda.</p>
+                <p className="text-slate-400 italic text-xs py-2">Nenhuma peça adicionada ainda.</p>
               ) : (
                 <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto pr-1">
                   {parts.map((p, index) => (
-                    <div key={index} className="py-2.5 flex items-center justify-between gap-2 text-xxs">
+                    <div key={index} className="py-2.5 flex items-center justify-between gap-2 text-xs">
                       <div className="min-w-0">
                         <p className="font-bold text-slate-800 truncate">{p.name}</p>
                         <p className="text-slate-400">
