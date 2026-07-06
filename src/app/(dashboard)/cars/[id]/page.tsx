@@ -4,7 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency, formatMileage, formatDate, formatConsumption } from '@/lib/formatters';
+import { SchedulesPanel } from '@/components/schedules-panel';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
+  BellRing,
   Car,
   Wrench,
   Fuel,
@@ -146,6 +150,8 @@ function LinkThumbnail({ url }: LinkThumbnailProps) {
 export default function CarDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
   const [car, setCar] = useState<CarDetails | null>(null);
   const [maintenances, setMaintenances] = useState<any[]>([]);
   const [fuelRecords, setFuelRecords] = useState<any[]>([]);
@@ -157,7 +163,15 @@ export default function CarDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Estados do formulário de melhorias / wishlist e controle de abas
-  const [activeTab, setActiveTab] = useState<'historico' | 'upgrades'>('historico');
+  const [activeTab, setActiveTab] = useState<'historico' | 'upgrades' | 'lembretes'>('historico');
+
+  // Permite abrir direto em uma aba via URL (ex: /cars/123?tab=lembretes)
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'lembretes' || tab === 'upgrades' || tab === 'historico') {
+      setActiveTab(tab);
+    }
+  }, []);
   const [sortBy, setSortBy] = useState<'recent' | 'priority' | 'price-asc' | 'price-desc' | 'alphabetical'>('recent');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [submittingUpgrade, setSubmittingUpgrade] = useState(false);
@@ -278,9 +292,11 @@ export default function CarDetailPage() {
   };
 
   const handleDeleteUpgrade = async (upgradeId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta melhoria? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Excluir melhoria',
+      message: 'Tem certeza que deseja excluir esta melhoria? Esta ação não pode ser desfeita.',
+    });
+    if (!ok) return;
 
     try {
       setError(null);
@@ -291,6 +307,7 @@ export default function CarDetailPage() {
         throw new Error('Erro ao excluir item.');
       }
       setUpgrades(prev => prev.filter(u => u.id !== upgradeId));
+      toast('Melhoria excluída.');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Erro ao excluir item.');
@@ -348,9 +365,11 @@ export default function CarDetailPage() {
   }, [id]);
 
   const handleDeleteMaintenance = async (maintId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Excluir manutenção',
+      message: 'Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.',
+    });
+    if (!ok) return;
 
     try {
       setError(null);
@@ -362,15 +381,18 @@ export default function CarDetailPage() {
         throw new Error(errData.error || 'Erro ao excluir manutenção.');
       }
       setMaintenances(prev => prev.filter(m => m.id !== maintId));
+      toast('Manutenção excluída.');
     } catch (err: any) {
       setError(err.message || 'Erro ao excluir manutenção.');
     }
   };
 
   const handleDeleteFuelRecord = async (fuelId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este abastecimento? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Excluir abastecimento',
+      message: 'Tem certeza que deseja excluir este abastecimento? Esta ação não pode ser desfeita.',
+    });
+    if (!ok) return;
 
     try {
       setError(null);
@@ -382,6 +404,7 @@ export default function CarDetailPage() {
         throw new Error(errData.error || 'Erro ao excluir abastecimento.');
       }
       setFuelRecords(prev => prev.filter(f => f.id !== fuelId));
+      toast('Abastecimento excluído.');
     } catch (err: any) {
       setError(err.message || 'Erro ao excluir abastecimento.');
     }
@@ -454,7 +477,7 @@ export default function CarDetailPage() {
 
   if (error && !car) {
     return (
-      <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl flex items-center gap-3">
+      <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3">
         <AlertCircle className="h-5 w-5" />
         <span>{error}</span>
       </div>
@@ -479,7 +502,7 @@ export default function CarDetailPage() {
         <div className="flex items-center gap-2">
           <Link
             href={`/cars/${car.id}/edit`}
-            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-sm flex items-center gap-1.5"
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-2.5 rounded-md text-xs transition-all shadow-sm flex items-center gap-1.5"
           >
             <Settings className="h-4 w-4" /> Editar Cadastro
           </Link>
@@ -487,7 +510,7 @@ export default function CarDetailPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl flex items-center gap-3 text-sm">
+        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3 text-sm">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -515,13 +538,23 @@ export default function CarDetailPage() {
           <ListTodo className="h-4.5 w-4.5" />
           Melhorias & Projetos
         </button>
+        <button
+          onClick={() => setActiveTab('lembretes')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-bold transition-all border-b-2 -mb-[2px] ${activeTab === 'lembretes'
+            ? 'border-blue-600 text-blue-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+        >
+          <BellRing className="h-4.5 w-4.5" />
+          Lembretes
+        </button>
       </div>
 
       {activeTab === 'historico' ? (
         /* Main Grid: Maintenances and Fuel Records Lists side-by-side */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Maintenances List */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-blue-600" />
@@ -630,7 +663,7 @@ export default function CarDetailPage() {
 
                       {/* Collapsible details panel */}
                       {isExpanded && hasDetails && (
-                        <div className="mt-3 ml-6.5 p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-3 animate-fade-in text-[11px]">
+                        <div className="mt-3 ml-6.5 p-3.5 bg-slate-50 border border-slate-100 rounded-md space-y-3 animate-fade-in text-[11px]">
                           {/* Peças Substituídas */}
                           {m.parts && m.parts.length > 0 ? (
                             <div>
@@ -672,7 +705,7 @@ export default function CarDetailPage() {
           </div>
 
           {/* Fuel Records List */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <Fuel className="h-5 w-5 text-emerald-600" />
@@ -770,9 +803,12 @@ export default function CarDetailPage() {
             )}
           </div>
         </div>
+      ) : activeTab === 'lembretes' ? (
+        /* Lembretes de Manutenção Tab View */
+        <SchedulesPanel carId={car.id} />
       ) : (
         /* Upgrades / Wishlist Tab View */
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3">
             <div className="flex items-center gap-2">
               <ListTodo className="h-5 w-5 text-blue-600" />
@@ -805,7 +841,7 @@ export default function CarDetailPage() {
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
               {[1, 2, 3, 4].map((n) => (
-                <div key={n} className="p-4 border border-slate-200 rounded-xl flex gap-3 items-start bg-white shadow-sm">
+                <div key={n} className="p-4 border border-slate-200 rounded-md flex gap-3 items-start bg-white shadow-sm">
                   {/* Checkbox Skeleton */}
                   <div className="h-5 w-5 rounded-full bg-slate-200 shrink-0 mt-0.5" />
                   
@@ -870,7 +906,7 @@ export default function CarDetailPage() {
                 return sortedUpgrades.map((item) => (
                   <div
                     key={item.id}
-                    className={`p-4 border rounded-xl flex gap-3 items-start transition-all relative ${item.status === 'Concluido'
+                    className={`p-4 border rounded-md flex gap-3 items-start transition-all relative ${item.status === 'Concluido'
                       ? 'bg-slate-50/60 border-slate-200 opacity-75'
                       : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
                       }`}
@@ -969,7 +1005,7 @@ export default function CarDetailPage() {
       {/* Upgrade Create/Edit Modal */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scale-in">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 animate-scale-in">
             <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
               <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
                 {editingUpgrade ? 'Editar Item de Melhoria' : 'Adicionar Item de Melhoria'}
@@ -991,7 +1027,7 @@ export default function CarDetailPage() {
                   type="text"
                   required
                   placeholder="Ex: Central Multimídia, Pintar Rodas"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                   value={upgradeForm.name}
                   onChange={(e) => setUpgradeForm(prev => ({ ...prev, name: e.target.value }))}
                 />
@@ -1002,7 +1038,7 @@ export default function CarDetailPage() {
                 <textarea
                   rows={2}
                   placeholder="Ex: Modelo XYZ com Carplay sem fio"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium resize-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium resize-none"
                   value={upgradeForm.description}
                   onChange={(e) => setUpgradeForm(prev => ({ ...prev, description: e.target.value }))}
                 />
@@ -1016,7 +1052,7 @@ export default function CarDetailPage() {
                     step="any"
                     min="0"
                     placeholder="Ex: 850.00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                     value={upgradeForm.estimatedValue}
                     onChange={(e) => setUpgradeForm(prev => ({ ...prev, estimatedValue: e.target.value }))}
                     onFocus={(e) => e.target.select()}
@@ -1026,7 +1062,7 @@ export default function CarDetailPage() {
                 <div>
                   <label className="block text-xxs font-bold text-slate-600 uppercase mb-1 tracking-wider">Prioridade</label>
                   <select
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold cursor-pointer"
                     value={upgradeForm.priority}
                     onChange={(e) => setUpgradeForm(prev => ({ ...prev, priority: e.target.value as any }))}
                   >
@@ -1039,7 +1075,7 @@ export default function CarDetailPage() {
                 <div>
                   <label className="block text-xxs font-bold text-slate-600 uppercase mb-1 tracking-wider">Status</label>
                   <select
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold cursor-pointer"
                     value={upgradeForm.status}
                     onChange={(e) => setUpgradeForm(prev => ({ ...prev, status: e.target.value as any }))}
                   >
@@ -1054,7 +1090,7 @@ export default function CarDetailPage() {
                 <input
                   type="text"
                   placeholder="Ex: www.mercadolivre.com.br/..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
                   value={upgradeForm.purchaseLink}
                   onChange={(e) => setUpgradeForm(prev => ({ ...prev, purchaseLink: e.target.value }))}
                 />

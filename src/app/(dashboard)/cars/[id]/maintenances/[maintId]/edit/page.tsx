@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaintenanceSchema } from '@/lib/validations';
 import { formatCurrency } from '@/lib/formatters';
+import { useToast } from '@/components/ui/toast';
 import { ArrowLeft, Loader2, Save, Wrench, Plus, Trash2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { z } from 'zod';
@@ -22,6 +23,7 @@ type MaintenanceFormValues = z.infer<typeof MaintenanceSchema>;
 export default function EditMaintenancePage() {
   const { id: carId, maintId } = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,15 +142,15 @@ export default function EditMaintenancePage() {
 
   const handleAddPart = () => {
     if (!newPartName.trim()) {
-      alert('O nome da peça é obrigatório.');
+      toast('O nome da peça é obrigatório.', 'error');
       return;
     }
     if (newPartQuantity <= 0) {
-      alert('A quantidade deve ser maior que zero.');
+      toast('A quantidade deve ser maior que zero.', 'error');
       return;
     }
     if (newPartUnitPrice < 0) {
-      alert('O valor unitário não pode ser negativo.');
+      toast('O valor unitário não pode ser negativo.', 'error');
       return;
     }
 
@@ -215,7 +217,7 @@ export default function EditMaintenancePage() {
       <div className="flex items-center gap-4">
         <Link
           href={`/cars/${carId}`}
-          className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl transition-all shadow-sm shrink-0"
+          className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-md transition-all shadow-sm shrink-0"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </Link>
@@ -226,7 +228,7 @@ export default function EditMaintenancePage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl flex items-center gap-3 text-sm animate-shake">
+        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3 text-sm animate-shake">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -235,7 +237,7 @@ export default function EditMaintenancePage() {
       {/* Split Form View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Service Fields */}
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-5">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <Wrench className="h-5 w-5 text-blue-600" />
             <h2 className="font-bold text-slate-800 text-sm">Dados da Manutenção</h2>
@@ -248,7 +250,7 @@ export default function EditMaintenancePage() {
               <input
                 type="text"
                 placeholder="Ex: Troca do kit de embreagem e óleos"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
                 {...register('description')}
               />
               {errors.description && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.description.message}</p>}
@@ -259,7 +261,7 @@ export default function EditMaintenancePage() {
               <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Data do Serviço *</label>
               <input
                 type="date"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
                 {...register('date')}
               />
               {errors.date && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.date.message}</p>}
@@ -270,7 +272,7 @@ export default function EditMaintenancePage() {
               <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Odômetro no Serviço (km) *</label>
               <input
                 type="number"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                 {...register('mileage')}
                 onFocus={(e) => e.target.select()}
               />
@@ -281,7 +283,7 @@ export default function EditMaintenancePage() {
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Tipo de Manutenção *</label>
               <select
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
                 {...register('type')}
               >
                 <option value="Preventiva">Preventiva</option>
@@ -307,7 +309,7 @@ export default function EditMaintenancePage() {
               <input
                 type="text"
                 placeholder="Ex: Auto Mecânica Silva"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
                 {...register('workshop')}
               />
             </div>
@@ -318,7 +320,7 @@ export default function EditMaintenancePage() {
               <input
                 type="number"
                 step="any"
-                className="w-full bg-slate-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+                className="w-full bg-slate-50 border border-blue-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                 {...register('laborCost')}
                 onFocus={(e) => e.target.select()}
               />
@@ -332,7 +334,7 @@ export default function EditMaintenancePage() {
                 type="number"
                 step="any"
                 placeholder="Ex: 665.00"
-                className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+                className="w-full bg-slate-50 border border-emerald-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
                 {...register('discount')}
                 onFocus={(e) => e.target.select()}
               />
@@ -343,7 +345,7 @@ export default function EditMaintenancePage() {
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider font-bold">Forma de Pagamento</label>
               <select
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
                 {...register('paymentMethod')}
               >
                 <option value="À vista">À vista</option>
@@ -354,13 +356,13 @@ export default function EditMaintenancePage() {
 
             {/* Parcelamento Condicional */}
             {isInstallment && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl animate-fade-in md:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-md animate-fade-in md:col-span-2">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider font-bold">Número de Parcelas</label>
                   <input
                     type="number"
                     min="1"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
+                    className="w-full bg-white border border-slate-200 rounded-md px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
                     {...register('installmentCount')}
                     onFocus={(e) => e.target.select()}
                   />
@@ -372,7 +374,7 @@ export default function EditMaintenancePage() {
                   <input
                     type="number"
                     step="any"
-                    className="w-full bg-white border border-blue-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
+                    className="w-full bg-white border border-blue-200 rounded-md px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
                     {...register('installmentValue')}
                     onFocus={(e) => e.target.select()}
                   />
@@ -387,7 +389,7 @@ export default function EditMaintenancePage() {
             <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Notas / Observações</label>
             <textarea
               rows={2}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
               placeholder="Alguma nota sobre a garantia ou peças trocadas?"
               {...register('notes')}
             />
@@ -395,7 +397,7 @@ export default function EditMaintenancePage() {
         </div>
 
         {/* Dynamic Parts List Module */}
-        <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-1 bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-4 flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
               <Plus className="h-4.5 w-4.5 text-emerald-600" />
@@ -454,7 +456,7 @@ export default function EditMaintenancePage() {
               <button
                 type="button"
                 onClick={handleAddPart}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-sm"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-md text-xs transition-all flex items-center justify-center gap-1 shadow-sm"
               >
                 <Plus className="h-3.5 w-3.5" /> Adicionar Peça na Lista
               </button>
@@ -534,7 +536,7 @@ export default function EditMaintenancePage() {
             <div className="flex gap-2">
               <Link
                 href={`/cars/${carId}`}
-                className="w-1/3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-3 rounded-xl text-xs transition-all shadow-sm text-center"
+                className="w-1/3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-3 rounded-md text-xs transition-all shadow-sm text-center"
               >
                 Cancelar
               </Link>
@@ -542,7 +544,7 @@ export default function EditMaintenancePage() {
                 onClick={handleSubmit(onSubmit)}
                 disabled={submitting}
                 type="button"
-                className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 disabled:bg-blue-400"
+                className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md text-xs transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 disabled:bg-blue-400"
               >
                 {submitting ? (
                   <>

@@ -3,30 +3,59 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useCar } from '@/components/providers/car-provider';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { formatMileage } from '@/lib/formatters';
 import {
   Car as CarIcon,
   Plus,
   Trash2,
   Edit2,
-  Eye,
-  Milestone,
-  Calendar,
-  Settings,
   AlertCircle,
-  Activity
+  ArrowRight,
+  CheckCircle2,
+  Fuel,
+  Calendar,
+  Cog,
 } from 'lucide-react';
+
+/** Placa estilizada no padrão brasileiro (faixa azul + caracteres em destaque). */
+function LicensePlate({ plate }: { plate: string | null }) {
+  if (!plate) {
+    return (
+      <span className="text-[10px] italic text-slate-500">sem placa</span>
+    );
+  }
+  return (
+    <span className="inline-flex flex-col overflow-hidden rounded-[3px] border border-slate-400/60 bg-white shadow-sm select-none">
+      <span className="bg-[#003399] px-2 py-px text-center text-[6px] font-bold tracking-[0.35em] text-white leading-tight">
+        BRASIL
+      </span>
+      <span className="px-2 py-0.5 text-xs font-bold tracking-[0.18em] text-slate-900 uppercase leading-tight text-center">
+        {plate}
+      </span>
+    </span>
+  );
+}
 
 export default function CarsPage() {
   const { cars, loading, refreshCars, setSelectedCarId, selectedCarId } = useCar();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleSelect = (carId: string, label: string) => {
+    setSelectedCarId(carId);
+    toast(`${label} agora é o veículo ativo.`, 'info');
+  };
+
   const handleDelete = async (carId: string) => {
-    if (!confirm('Deseja realmente excluir este veículo? Todas as manutenções e abastecimentos vinculados serão excluídos permanentemente.')) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Excluir veículo',
+      message: 'Deseja realmente excluir este veículo? Todas as manutenções e abastecimentos vinculados serão excluídos permanentemente.',
+    });
+    if (!ok) return;
 
     try {
       setSubmitting(true);
@@ -41,6 +70,7 @@ export default function CarsPage() {
           setSelectedCarId(null);
         }
         await refreshCars();
+        toast('Veículo excluído.');
       } else {
         const errData = await res.json();
         setError(errData.error || 'Erro ao excluir veículo.');
@@ -63,22 +93,19 @@ export default function CarsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Meus Veículos</h1>
-          <p className="text-slate-500 text-sm">Gerencie os carros cadastrados na sua conta.</p>
-        </div>
-
-        <Link
-          href="/cars/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md hover:shadow-lg flex items-center gap-1.5"
-        >
-          <Plus className="h-4 w-4" /> Cadastrar Veículo
-        </Link>
+      <div>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Garagem</h1>
+        <p className="text-slate-500 text-sm">
+          {cars.length === 0
+            ? 'Nenhum veículo por aqui ainda.'
+            : cars.length === 1
+            ? '1 veículo cadastrado.'
+            : `${cars.length} veículos cadastrados.`}
+        </p>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl flex items-center gap-3 text-sm">
+        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3 text-sm">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -86,125 +113,136 @@ export default function CarsPage() {
 
       {/* Empty State */}
       {cars.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center max-w-lg mx-auto shadow-sm">
+        <div className="bg-white p-12 rounded-lg border border-slate-200 text-center max-w-lg mx-auto">
           <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <CarIcon className="h-8 w-8" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2 font-sans">Nenhum carro cadastrado</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Garagem vazia</h2>
           <p className="text-slate-500 text-sm leading-relaxed mb-8">
-            Você ainda não possui veículos cadastrados no sistema. Cadastre seu primeiro carro para começar a registrar abastecimentos e manutenções.
+            Cadastre seu primeiro carro para começar a registrar abastecimentos, manutenções e receber lembretes de revisão.
           </p>
           <Link
             href="/cars/new"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg inline-flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-md transition-all shadow-md hover:shadow-lg inline-flex items-center gap-2"
           >
             <Plus className="h-5 w-5" /> Cadastrar Meu Primeiro Carro
           </Link>
         </div>
       ) : (
         /* Cars Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {cars.map((car) => {
             const isSelected = selectedCarId === car.id;
+            const title = car.nickname || `${car.brand} ${car.model}`;
             return (
               <div
                 key={car.id}
-                className={`bg-white rounded-2xl border transition-all p-6 flex flex-col justify-between h-64 shadow-sm hover:shadow-md ${
-                  isSelected ? 'ring-2 ring-blue-500 border-transparent' : 'border-slate-200'
+                className={`group bg-white rounded-lg border overflow-hidden transition-all hover:shadow-md ${
+                  isSelected ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-200'
                 }`}
               >
-                <Link
-                  href={`/cars/${car.id}`}
-                  className="cursor-pointer group block"
-                >
-                  {/* Title & Badge */}
-                  <div className="flex items-start justify-between gap-4">
+                {/* Faixa superior escura: identidade do carro */}
+                <Link href={`/cars/${car.id}`} className="block bg-slate-950 px-5 py-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-extrabold text-slate-900 text-lg leading-tight truncate group-hover:text-blue-600 transition-colors">
-                        {car.nickname || `${car.brand} ${car.model}`}
+                      <p className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-500 mb-1">
+                        {car.brand}
+                      </p>
+                      <h3 className="font-bold text-white text-lg leading-tight truncate group-hover:text-blue-300 transition-colors">
+                        {title}
                       </h3>
-                      <p className="text-slate-400 text-xs mt-0.5 font-medium">
-                        {car.brand} {car.model}
+                      <p className="text-slate-400 text-xs mt-0.5 truncate">
+                        {car.model} • {car.yearManufacture}/{car.yearModel}
+                      </p>
+                    </div>
+                    <LicensePlate plate={car.plate} />
+                  </div>
+                </Link>
+
+                {/* Corpo: odômetro em destaque + specs */}
+                <Link href={`/cars/${car.id}`} className="block px-5 pt-4 pb-3">
+                  <div className="flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-400 mb-0.5">
+                        Odômetro
+                      </p>
+                      <p className="text-2xl font-bold text-slate-900 tracking-tight">
+                        {formatMileage(car.currentMileage)}
                       </p>
                     </div>
                     {isSelected && (
-                      <span className="text-xxs font-semibold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100 shrink-0">
-                        Ativo
+                      <span className="flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-100 px-2 py-1 rounded shrink-0">
+                        <CheckCircle2 className="h-3 w-3" /> Em uso
                       </span>
                     )}
                   </div>
 
-                  {/* Car Metadata */}
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 mt-5 text-slate-500 text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span className="truncate">Ano: {car.yearManufacture}/{car.yearModel}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Milestone className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span className="font-bold text-slate-700 truncate">{formatMileage(car.currentMileage)}</span>
-                    </div>
-
-                    {car.plate && (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Settings className="h-4 w-4 text-slate-400 shrink-0" />
-                        <span className="uppercase tracking-wider truncate">Placa: {car.plate}</span>
-                      </div>
-                    )}
-
+                  <div className="flex items-center gap-4 mt-3.5 text-xs text-slate-500 flex-wrap">
+                    <span className="flex items-center gap-1.5">
+                      <Fuel className="h-3.5 w-3.5 text-slate-400" /> {car.fuelType}
+                    </span>
                     {car.engine && (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Activity className="h-4 w-4 text-slate-400 shrink-0" />
-                        <span className="truncate">Motor: {car.engine}</span>
-                      </div>
+                      <span className="flex items-center gap-1.5">
+                        <Cog className="h-3.5 w-3.5 text-slate-400" /> {car.engine}
+                      </span>
+                    )}
+                    {car.color && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full border border-slate-300 bg-slate-200" />
+                        {car.color}
+                      </span>
                     )}
                   </div>
                 </Link>
 
-                {/* Card Actions */}
-                <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-6">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedCarId(car.id)}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all border ${
-                        isSelected
-                          ? 'bg-slate-50 border-slate-200 text-slate-500 pointer-events-none'
-                          : 'bg-blue-50 hover:bg-blue-100 border-blue-100 text-blue-700'
-                      }`}
-                    >
-                      {isSelected ? 'Selecionado' : 'Selecionar'}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
+                {/* Rodapé de ações */}
+                <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+                  {isSelected ? (
                     <Link
-                      href={`/cars/${car.id}`}
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all"
-                      title="Ver Detalhes"
+                      href="/dashboard"
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                     >
-                      <Eye className="h-4.5 w-4.5" />
+                      Ver dashboard <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
+                  ) : (
+                    <button
+                      onClick={() => handleSelect(car.id, title)}
+                      className="text-xs font-bold text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-200 hover:bg-blue-50 px-3 py-1.5 rounded transition-all"
+                    >
+                      Usar este carro
+                    </button>
+                  )}
+
+                  <div className="flex items-center gap-1">
                     <Link
                       href={`/cars/${car.id}/edit`}
-                      className="p-2 text-slate-400 hover:text-amber-600 hover:bg-slate-50 rounded-xl transition-all"
-                      title="Editar"
+                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded transition-all"
+                      title="Editar cadastro"
                     >
-                      <Edit2 className="h-4.5 w-4.5" />
+                      <Edit2 className="h-4 w-4" />
                     </Link>
                     <button
                       onClick={() => handleDelete(car.id)}
                       disabled={submitting}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-50 rounded-xl transition-all disabled:opacity-50"
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all disabled:opacity-50"
                       title="Excluir"
                     >
-                      <Trash2 className="h-4.5 w-4.5" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
               </div>
             );
           })}
+
+          {/* Card fantasma: adicionar veículo */}
+          <Link
+            href="/cars/new"
+            className="border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-lg flex flex-col items-center justify-center gap-2 py-10 text-slate-400 hover:text-blue-600 transition-all min-h-[220px]"
+          >
+            <Plus className="h-6 w-6" />
+            <span className="text-xs font-bold uppercase tracking-wider">Adicionar veículo</span>
+          </Link>
         </div>
       )}
     </div>

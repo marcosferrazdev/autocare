@@ -18,6 +18,15 @@ import {
   Calculator
 } from 'lucide-react';
 
+interface MaintenancePartLog {
+  id: string;
+  name: string;
+  brand: string | null;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
 interface MaintenanceLog {
   id: string;
   date: string;
@@ -25,11 +34,15 @@ interface MaintenanceLog {
   type: string;
   workshop: string | null;
   description: string;
+  laborCost: number;
+  totalPartsCost: number;
   totalCost: number;
+  notes?: string | null;
   paymentMethod?: string | null;
   installmentCount?: number | null;
   installmentValue?: number | null;
   discount?: number | null;
+  parts?: MaintenancePartLog[];
 }
 
 interface FuelLog {
@@ -59,6 +72,11 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState('');
   const [maintTypeFilter, setMaintTypeFilter] = useState('');
   const [fuelTypeFilter, setFuelTypeFilter] = useState('');
+
+  // Linhas de manutenção expandidas (detalhe de peças)
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const toggleRow = (id: string) =>
+    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const fetchReportsData = async () => {
     if (!selectedCarId) return;
@@ -124,6 +142,17 @@ export default function ReportsPage() {
   const kmDriven = maxMileage - minMileage;
   const costPerKm = kmDriven > 0 ? Number((totalSpent / kmDriven).toFixed(2)) : 0;
 
+  // Resumo de gastos por tipo de manutenção (dados filtrados)
+  const costByType = Object.entries(
+    maintenances.reduce<Record<string, number>>((acc, m) => {
+      acc[m.type] = (acc[m.type] || 0) + m.totalCost;
+      return acc;
+    }, {})
+  )
+    .map(([type, value]) => ({ type, value }))
+    .sort((a, b) => b.value - a.value);
+  const maxTypeCost = costByType[0]?.value || 1;
+
   const handlePrint = () => {
     window.print();
   };
@@ -142,7 +171,7 @@ export default function ReportsPage() {
         <BarChart3 className="h-14 w-14 text-slate-300 mb-4" />
         <h2 className="text-xl font-bold text-slate-800 mb-2">Nenhum veículo selecionado</h2>
         <p className="text-slate-500 text-sm leading-relaxed mb-4">
-          Cadastre ou selecione um veículo no cabeçalho superior para gerar e exportar relatórios de custos e consumo.
+          Cadastre ou selecione um veículo na aba <strong>Meus Veículos</strong> para gerar e exportar relatórios de custos e consumo.
         </p>
       </div>
     );
@@ -159,7 +188,7 @@ export default function ReportsPage() {
 
         <button
           onClick={handlePrint}
-          className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-sm flex items-center gap-1.5"
+          className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-2.5 rounded-md text-xs transition-all shadow-sm flex items-center gap-1.5"
         >
           <Printer className="h-4 w-4" /> Imprimir Relatório
         </button>
@@ -175,7 +204,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Filters Panel */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4 print:hidden">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-4 print:hidden">
         <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
           <Filter className="h-4.5 w-4.5 text-blue-600" />
           <h2 className="font-bold text-slate-800 text-sm">Filtros Avançados</h2>
@@ -187,7 +216,7 @@ export default function ReportsPage() {
             <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Data Inicial</label>
             <input
               type="date"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
@@ -198,7 +227,7 @@ export default function ReportsPage() {
             <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Data Final</label>
             <input
               type="date"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
@@ -208,7 +237,7 @@ export default function ReportsPage() {
           <div>
             <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Tipo de Manutenção</label>
             <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
               value={maintTypeFilter}
               onChange={(e) => setMaintTypeFilter(e.target.value)}
             >
@@ -233,7 +262,7 @@ export default function ReportsPage() {
           <div>
             <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Combustível</label>
             <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
               value={fuelTypeFilter}
               onChange={(e) => setFuelTypeFilter(e.target.value)}
             >
@@ -249,7 +278,7 @@ export default function ReportsPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl flex items-center gap-3 text-sm">
+        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3 text-sm">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -258,7 +287,7 @@ export default function ReportsPage() {
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
         {/* Total Gasto */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Total Gasto Filtrado</p>
           {loading ? (
             <div className="h-6 bg-slate-100 rounded w-2/3 mt-1.5 animate-pulse"></div>
@@ -281,7 +310,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Distância */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Distância no Período</p>
           {loading ? (
             <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
@@ -292,7 +321,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Consumo */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Consumo Médio</p>
           {loading ? (
             <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
@@ -303,7 +332,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Custo/KM */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
           <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Custo por KM Rodado</p>
           {loading ? (
             <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
@@ -314,12 +343,45 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Resumo por tipo de manutenção */}
+      {!loading && costByType.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-lg p-6">
+          <h2 className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-[0.15em] mb-5">
+            Onde o dinheiro foi — por tipo de manutenção
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-3.5">
+            {costByType.map((entry) => (
+              <div key={entry.type}>
+                <div className="flex items-baseline justify-between gap-3 mb-1">
+                  <span className="text-xs font-medium text-slate-600 truncate">{entry.type}</span>
+                  <span className="text-xs font-bold text-slate-900 shrink-0">
+                    {formatCurrency(entry.value)}
+                    <span className="text-slate-400 font-medium ml-1.5">
+                      {totalMaintCost > 0 ? `${Math.round((entry.value / totalMaintCost) * 100)}%` : ''}
+                    </span>
+                  </span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#2a78d6]"
+                    style={{ width: `${Math.max(2, (entry.value / maxTypeCost) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-8">
         {/* Maintenances Extrato */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3.5 mb-4">
-            <Wrench className="h-4.5 w-4.5 text-blue-600" />
-            <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Manutenções ({maintenances.length})</h2>
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4">
+            <div className="flex items-center gap-2">
+              <Wrench className="h-4.5 w-4.5 text-blue-600" />
+              <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Manutenções ({maintenances.length})</h2>
+            </div>
+            <span className="text-xxs text-slate-400 print:hidden">clique na linha para ver as peças</span>
           </div>
           
           {loading ? (
@@ -343,6 +405,7 @@ export default function ReportsPage() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
+                    <th className="pb-3 w-6" />
                     <th className="pb-3 pr-4">Data</th>
                     <th className="pb-3 pr-4">Descrição</th>
                     <th className="pb-3 pr-4">Tipo</th>
@@ -353,34 +416,85 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {maintenances.map((m) => (
-                    <tr key={m.id}>
-                      <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(m.date)}</td>
-                      <td className="py-3 pr-4 font-bold text-slate-900">{m.description}</td>
-                      <td className="py-3 pr-4 font-medium"><span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase text-xxs">{m.type}</span></td>
-                      <td className="py-3 pr-4">{formatMileage(m.mileage)}</td>
-                      <td className="py-3 pr-4 text-slate-500">{m.workshop || '-'}</td>
-                      <td className="py-3 pr-4 text-slate-500 font-medium">
-                        {m.paymentMethod === 'À vista' || !m.paymentMethod ? (
-                          <span className="text-slate-600">À vista</span>
-                        ) : m.installmentCount && m.installmentValue ? (
-                          <span className="text-slate-800 font-semibold">
-                            A prazo ({m.installmentCount}x de {formatCurrency(m.installmentValue)})
-                          </span>
-                        ) : (
-                          <span className="text-slate-600">{m.paymentMethod}</span>
+                  {maintenances.map((m) => {
+                    const hasDetails = (m.parts && m.parts.length > 0) || m.laborCost > 0 || m.notes;
+                    const isExpanded = !!expandedRows[m.id];
+                    return (
+                      <React.Fragment key={m.id}>
+                        <tr
+                          onClick={() => hasDetails && toggleRow(m.id)}
+                          className={hasDetails ? 'cursor-pointer hover:bg-slate-50/70 transition-colors' : ''}
+                        >
+                          <td className="py-3 pr-2 w-6">
+                            {hasDetails && (
+                              <ChevronRight
+                                className={`h-3.5 w-3.5 text-slate-400 transition-transform print:hidden ${isExpanded ? 'rotate-90 text-blue-600' : ''}`}
+                              />
+                            )}
+                          </td>
+                          <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(m.date)}</td>
+                          <td className="py-3 pr-4 font-bold text-slate-900">{m.description}</td>
+                          <td className="py-3 pr-4 font-medium"><span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase text-xxs">{m.type}</span></td>
+                          <td className="py-3 pr-4">{formatMileage(m.mileage)}</td>
+                          <td className="py-3 pr-4 text-slate-500">{m.workshop || '-'}</td>
+                          <td className="py-3 pr-4 text-slate-500 font-medium">
+                            {m.paymentMethod === 'À vista' || !m.paymentMethod ? (
+                              <span className="text-slate-600">À vista</span>
+                            ) : m.installmentCount && m.installmentValue ? (
+                              <span className="text-slate-800 font-semibold">
+                                A prazo ({m.installmentCount}x de {formatCurrency(m.installmentValue)})
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">{m.paymentMethod}</span>
+                            )}
+                          </td>
+                          <td className="py-3 text-right">
+                            <span className="font-extrabold text-slate-950 block">{formatCurrency(m.totalCost)}</span>
+                            {m.discount && m.discount > 0 ? (
+                              <span className="text-xxs text-emerald-600 font-semibold block">
+                                -{formatCurrency(m.discount)} desc.
+                              </span>
+                            ) : null}
+                          </td>
+                        </tr>
+                        {isExpanded && hasDetails && (
+                          <tr className="bg-slate-50/60">
+                            <td />
+                            <td colSpan={7} className="py-3 pr-4">
+                              <div className="space-y-2.5 text-[11px]">
+                                {m.parts && m.parts.length > 0 && (
+                                  <div>
+                                    <p className="font-bold text-slate-400 text-[9px] uppercase tracking-wider mb-1.5">
+                                      Peças ({m.parts.length})
+                                    </p>
+                                    <div className="space-y-1">
+                                      {m.parts.map((p) => (
+                                        <div key={p.id} className="flex justify-between items-center text-slate-700 max-w-md">
+                                          <span>
+                                            <span className="font-bold text-slate-900">{p.quantity}x</span> {p.name}
+                                            {p.brand && <span className="text-slate-400"> ({p.brand})</span>}
+                                            <span className="text-slate-400"> • {formatCurrency(p.unitPrice)}/un</span>
+                                          </span>
+                                          <span className="font-semibold text-slate-600">{formatCurrency(p.totalPrice)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-5 text-[10px] text-slate-500 pt-1.5 border-t border-slate-200/60 max-w-md">
+                                  <span>Mão de obra: <strong className="text-slate-700">{formatCurrency(m.laborCost)}</strong></span>
+                                  <span>Peças: <strong className="text-slate-700">{formatCurrency(m.totalPartsCost)}</strong></span>
+                                </div>
+                                {m.notes && (
+                                  <p className="text-slate-500 italic max-w-md whitespace-pre-wrap">{m.notes}</p>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="py-3 text-right">
-                        <span className="font-extrabold text-slate-950 block">{formatCurrency(m.totalCost)}</span>
-                        {m.discount && m.discount > 0 ? (
-                          <span className="text-xxs text-emerald-600 font-semibold block">
-                            -{formatCurrency(m.discount)} desc.
-                          </span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -388,7 +502,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Fuel Records Extrato */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 overflow-hidden">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3.5 mb-4">
             <Fuel className="h-4.5 w-4.5 text-emerald-600" />
             <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Abastecimentos ({fuelRecords.length})</h2>

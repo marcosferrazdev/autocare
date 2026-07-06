@@ -39,6 +39,8 @@ model Car {
   fuelRecords     FuelRecord[]
   vehicleWebInfo  VehicleWebInfo?
   upgradeItems    UpgradeItem[]
+  schedules       MaintenanceSchedule[]
+  trips           Trip[]
 }
 
 model Maintenance {
@@ -115,6 +117,38 @@ model VehicleWebInfo {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   car                Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+model MaintenanceSchedule {
+  id              String    @id @default(uuid())
+  carId           String
+  type            String
+  description     String?
+  intervalKm      Float?
+  intervalMonths  Int?
+  lastDoneMileage Float?
+  lastDoneDate    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  car             Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@unique([carId, type])
+}
+
+model Trip {
+  id              String    @id @default(uuid())
+  carId           String
+  title           String
+  originCity      String
+  destinationCity String
+  startDate       DateTime
+  endDate         DateTime?
+  startMileage    Float?
+  endMileage      Float?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  car             Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
 }
 
 model UpgradeItem {

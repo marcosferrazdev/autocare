@@ -48,14 +48,14 @@ export default function RegisterPage() {
       <RodaNexoLogo size="lg" href="/" className="mb-8" />
 
       {/* Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-100 max-w-md w-full p-8">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-xl shadow-slate-100 max-w-md w-full p-8">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Crie sua conta</h1>
           <p className="text-slate-500 text-sm mt-1">Inscreva-se grátis para gerenciar seus veículos.</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 flex gap-2.5 items-start text-sm">
+          <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-md border border-red-100 flex gap-2.5 items-start text-sm">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -70,7 +70,7 @@ export default function RegisterPage() {
             <input
               id="name"
               type="text"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               placeholder="Seu nome"
               {...registerField('name')}
             />
@@ -87,7 +87,7 @@ export default function RegisterPage() {
             <input
               id="email"
               type="email"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               placeholder="seuemail@exemplo.com"
               {...registerField('email')}
             />
@@ -104,7 +104,7 @@ export default function RegisterPage() {
             <input
               id="password"
               type="password"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               placeholder="Mínimo 6 caracteres"
               {...registerField('password')}
             />
@@ -117,7 +117,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl disabled:bg-blue-400 transition-all flex items-center justify-center gap-2 mt-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md shadow-lg hover:shadow-xl disabled:bg-blue-400 transition-all flex items-center justify-center gap-2 mt-2"
           >
             {submitting ? (
               <>

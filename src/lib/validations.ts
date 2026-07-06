@@ -126,6 +126,60 @@ export const VehicleWebInfoSchema = z.object({
   sourceUrl: z.string().optional().nullable(),
 });
 
+// Validação de Lembrete de Manutenção Preventiva
+export const MaintenanceScheduleSchema = z
+  .object({
+    type: z.enum(
+      [
+        'Preventiva',
+        'Corretiva',
+        'Troca de óleo',
+        'Freios',
+        'Suspensão',
+        'Motor',
+        'Elétrica',
+        'Pneus',
+        'Arrefecimento',
+        'Correia dentada',
+        'Bateria',
+        'Alinhamento e balanceamento',
+        'Outro',
+      ],
+      { message: 'Tipo de manutenção inválido' }
+    ),
+    description: z.string().max(200, 'A descrição não pode ser muito longa').optional().nullable().or(z.literal('')),
+    intervalKm: z.coerce.number().gt(0, 'O intervalo em km deve ser maior que zero').optional().nullable(),
+    intervalMonths: z.coerce.number().int().gt(0, 'O intervalo em meses deve ser maior que zero').optional().nullable(),
+    lastDoneMileage: z.coerce.number().min(0, 'A quilometragem não pode ser negativa').optional().nullable(),
+    lastDoneDate: z.string().optional().nullable().or(z.literal('')),
+  })
+  .refine((data) => data.intervalKm || data.intervalMonths, {
+    message: 'Informe pelo menos um intervalo (km ou meses)',
+    path: ['intervalKm'],
+  });
+
+// Validação de Viagem
+export const TripSchema = z
+  .object({
+    title: z.string().min(1, 'Dê um nome para a viagem').max(100, 'O nome é muito longo'),
+    originCity: z.string().min(1, 'A cidade de origem é obrigatória').max(100),
+    destinationCity: z.string().min(1, 'A cidade de destino é obrigatória').max(100),
+    startDate: z.string().min(1, 'A data de início é obrigatória'),
+    endDate: z.string().optional().nullable().or(z.literal('')),
+    startMileage: z.coerce.number().min(0, 'A quilometragem não pode ser negativa').optional().nullable(),
+    endMileage: z.coerce.number().min(0, 'A quilometragem não pode ser negativa').optional().nullable(),
+    notes: z.string().optional().nullable().or(z.literal('')),
+  })
+  .refine(
+    (data) => !data.endDate || new Date(data.endDate) >= new Date(data.startDate),
+    { message: 'A data de fim não pode ser antes do início', path: ['endDate'] }
+  )
+  .refine(
+    (data) =>
+      data.startMileage == null || data.endMileage == null || data.endMileage >= data.startMileage,
+    { message: 'O km final não pode ser menor que o inicial', path: ['endMileage'] }
+  );
+
 // Validação de Item de Melhoria / Reforma
 export const UpgradeItemSchema = z.object({
   name: z.string().min(1, 'O nome é obrigatório'),

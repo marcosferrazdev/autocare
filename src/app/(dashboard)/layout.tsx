@@ -4,26 +4,37 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
-import { CarProvider, useCar } from '@/components/providers/car-provider';
-import { RodaNexoLogo } from '@/components/logo';
+import { CarProvider } from '@/components/providers/car-provider';
+import { ToastProvider } from '@/components/ui/toast';
+import { ConfirmProvider } from '@/components/ui/confirm-dialog';
+import { RodaNexoIcon } from '@/components/logo';
 import {
   Car,
-  Wrench,
-  Fuel,
   LayoutDashboard,
   BarChart3,
+  Map,
   LogOut,
   Menu,
   X,
-  User,
-  Plus,
-  Loader2,
-  ChevronDown
+  Loader2
 } from 'lucide-react';
+
+function SidebarLogo() {
+  return (
+    <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+      <div className="h-9 w-9 rounded-md bg-white flex items-center justify-center shrink-0 shadow-sm">
+        <RodaNexoIcon size={24} />
+      </div>
+      <span className="text-base font-bold tracking-tight select-none">
+        <span className="text-white">Roda</span>
+        <span className="text-blue-400">Nexo</span>
+      </span>
+    </Link>
+  );
+}
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, logout } = useAuth();
-  const { cars, selectedCarId, setSelectedCarId, loading: carsLoading } = useCar();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -52,32 +63,34 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Meus Veículos', href: '/cars', icon: Car },
     { name: 'Relatórios', href: '/reports', icon: BarChart3 },
+    { name: 'Viagens', href: '/trips', icon: Map },
   ];
 
+  const navLinkClass = (isActive: boolean) =>
+    `relative flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors border-l-2 ${isActive
+      ? 'border-blue-500 bg-white/[0.04] text-white'
+      : 'border-transparent text-slate-500 hover:text-slate-200'
+    }`;
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0 sticky top-0 h-screen">
+      <aside className="hidden md:flex flex-col w-64 bg-slate-950 shrink-0 sticky top-0 h-screen">
         {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0">
-          <RodaNexoLogo size="sm" href="/dashboard" />
+        <div className="h-16 flex items-center px-5 border-b border-white/5 shrink-0">
+          <SidebarLogo />
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 py-6 space-y-0.5 overflow-y-auto">
+          <p className="px-4 pb-3 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-600">
+            Menu
+          </p>
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
+              <Link key={item.name} href={item.href} className={navLinkClass(isActive)}>
+                <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                 {item.name}
               </Link>
             );
@@ -85,19 +98,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User profile & Logout */}
-        <div className="p-4 border-t border-slate-100 shrink-0 space-y-3">
+        <div className="p-4 border-t border-white/5 shrink-0 space-y-2">
           <div className="flex items-center gap-3 px-2 py-1.5">
-            <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+            <div className="h-9 w-9 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20 flex items-center justify-center font-bold text-sm shrink-0">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
-              <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              <p className="text-sm font-bold text-white truncate">{user.name}</p>
+              <p className="text-xs text-slate-500 truncate">{user.email}</p>
             </div>
           </div>
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-all"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-semibold text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
           >
             <LogOut className="h-5 w-5" />
             Sair
@@ -106,11 +119,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Mobile Header / Navbar */}
-      <header className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-40 shrink-0">
-        <RodaNexoLogo size="sm" href="/dashboard" />
+      <header className="md:hidden h-16 bg-slate-950 flex items-center justify-between px-4 sticky top-0 z-40 shrink-0">
+        <SidebarLogo />
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-50 transition-all"
+          className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all"
         >
           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
@@ -118,8 +131,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Drawer Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-16 bg-slate-900/20 backdrop-blur-sm z-30 flex flex-col justify-start">
-          <div className="bg-white border-b border-slate-200 px-4 py-6 space-y-4 shadow-xl">
+        <div className="md:hidden fixed inset-0 top-16 bg-slate-950/50 backdrop-blur-sm z-30 flex flex-col justify-start">
+          <div className="bg-slate-950 border-b border-white/5 px-4 py-6 space-y-4 shadow-xl">
             <nav className="space-y-1">
               {navigation.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -128,25 +141,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     key={item.name}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                    }`}
+                    className={navLinkClass(isActive)}
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                     {item.name}
                   </Link>
                 );
               })}
             </nav>
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-4 border-t border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                <div className="h-9 w-9 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20 flex items-center justify-center font-bold text-sm">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">{user.name}</p>
+                  <p className="text-sm font-bold text-white">{user.name}</p>
                 </div>
               </div>
               <button
@@ -154,7 +163,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   setMobileMenuOpen(false);
                   logout();
                 }}
-                className="flex items-center gap-2 text-sm font-semibold text-red-600 bg-red-50 px-3 py-2 rounded-lg"
+                className="flex items-center gap-2 text-sm font-semibold text-red-400 bg-red-500/10 px-3 py-2 rounded-lg"
               >
                 <LogOut className="h-4 w-4" />
                 Sair
@@ -166,47 +175,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* Top Header - Car Selector */}
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-10 sticky top-0">
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:inline">
-              Veículo Selecionado:
-            </span>
-            {cars.length > 0 ? (
-              <div className="relative inline-block">
-                <select
-                  value={selectedCarId || ''}
-                  onChange={(e) => setSelectedCarId(e.target.value)}
-                  className="appearance-none bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl pl-4 pr-10 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 cursor-pointer transition-all min-w-[200px]"
-                >
-                  {cars.map((car) => (
-                    <option key={car.id} value={car.id}>
-                      {car.nickname ? `${car.nickname} (${car.model})` : `${car.brand} ${car.model}`}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-              </div>
-            ) : (
-              <span className="text-sm text-slate-400 italic">Nenhum carro cadastrado</span>
-            )}
-
-            <Link
-              href="/cars/new"
-              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-dashed border-slate-200 hover:border-blue-200 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 shrink-0"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Novo Carro</span>
-            </Link>
-          </div>
-
-          <div className="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100 hidden sm:inline">
-            Status: Conectado
-          </div>
-        </header>
-
-        {/* Route Page Children Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-6 md:p-8">
           {children}
         </main>
       </div>
@@ -216,8 +185,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <CarProvider>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </CarProvider>
+    <ToastProvider>
+      <ConfirmProvider>
+        <CarProvider>
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </CarProvider>
+      </ConfirmProvider>
+    </ToastProvider>
   );
 }

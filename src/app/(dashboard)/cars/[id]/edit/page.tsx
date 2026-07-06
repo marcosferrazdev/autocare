@@ -102,7 +102,7 @@ export default function EditCarPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/cars"
-          className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl transition-all shadow-sm shrink-0"
+          className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-md transition-all shadow-sm shrink-0"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </Link>
@@ -113,14 +113,14 @@ export default function EditCarPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl flex items-center gap-3 text-sm">
+        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3 text-sm">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Form Card */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 md:p-8 space-y-6">
         <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
           <CarIcon className="h-5 w-5 text-blue-600" />
           <h2 className="font-bold text-slate-800 text-sm">Dados Principais</h2>
@@ -135,7 +135,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="text"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('brand')}
             />
             {errors.brand && (
@@ -150,7 +150,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="text"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('model')}
             />
             {errors.model && (
@@ -165,7 +165,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="number"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('yearManufacture')}
             />
             {errors.yearManufacture && (
@@ -180,7 +180,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="number"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('yearModel')}
             />
             {errors.yearModel && (
@@ -194,7 +194,7 @@ export default function EditCarPage() {
               Combustível <span className="text-red-500">*</span>
             </label>
             <select
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 cursor-pointer"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 cursor-pointer"
               {...register('fuelType')}
             >
               <option value="Flex">Flex</option>
@@ -216,7 +216,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="number"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('currentMileage')}
             />
             {errors.currentMileage && (
@@ -231,7 +231,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="text"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 uppercase placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 uppercase placeholder:text-slate-400"
               {...register('plate')}
             />
             {errors.plate && (
@@ -246,7 +246,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="text"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('engine')}
             />
             {errors.engine && (
@@ -261,7 +261,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="text"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('color')}
             />
             {errors.color && (
@@ -276,7 +276,7 @@ export default function EditCarPage() {
             </label>
             <input
               type="text"
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
               {...register('nickname')}
             />
             {errors.nickname && (
@@ -292,7 +292,7 @@ export default function EditCarPage() {
           </label>
           <textarea
             rows={3}
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
+            className="w-full bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-950 placeholder:text-slate-400"
             {...register('notes')}
           />
         </div>
@@ -301,14 +301,14 @@ export default function EditCarPage() {
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
           <Link
             href="/cars"
-            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-5 py-2.5 rounded-xl text-xs transition-all"
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-5 py-2.5 rounded-md text-xs transition-all"
           >
             Cancelar
           </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 disabled:bg-blue-400"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-md text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 disabled:bg-blue-400"
           >
             {submitting ? (
               <>

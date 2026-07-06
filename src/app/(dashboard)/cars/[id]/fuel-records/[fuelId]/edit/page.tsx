@@ -232,7 +232,7 @@ export default function EditFuelRecordPage() {
       <div className="flex items-center gap-4">
         <Link
           href={`/cars/${carId}`}
-          className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl transition-all shadow-sm shrink-0"
+          className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-md transition-all shadow-sm shrink-0"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </Link>
@@ -243,14 +243,14 @@ export default function EditFuelRecordPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl flex items-center gap-3 text-sm">
+        <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3 text-sm">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Form Card */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 md:p-8 space-y-6">
         <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
           <Fuel className="h-5 w-5 text-emerald-600" />
           <h2 className="font-bold text-slate-800 text-sm">Dados do Abastecimento</h2>
@@ -263,7 +263,7 @@ export default function EditFuelRecordPage() {
             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Data do Abastecimento *</label>
             <input
               type="date"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
               {...register('date')}
             />
             {errors.date && <p className="text-red-600 text-xxs mt-1.5 font-semibold">{errors.date.message}</p>}
@@ -274,7 +274,7 @@ export default function EditFuelRecordPage() {
             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Odômetro Atual (km) *</label>
             <input
               type="number"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
               {...register('mileage')}
               onFocus={(e) => e.target.select()}
             />
@@ -285,7 +285,7 @@ export default function EditFuelRecordPage() {
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Tipo de Combustível *</label>
             <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
               {...register('fuelType')}
             >
               <option value="Gasolina">Gasolina</option>
@@ -319,7 +319,7 @@ export default function EditFuelRecordPage() {
               step="any"
               disabled={isInstallment}
               placeholder="Quanto você pagou? Ex: 200.00"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold disabled:opacity-75"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold disabled:opacity-75"
               value={totalPaid}
               onChange={(e) => handleTotalPaidChange(e.target.value)}
               onFocus={(e) => e.target.select()}
@@ -333,7 +333,7 @@ export default function EditFuelRecordPage() {
               type="number"
               step="any"
               placeholder="Ex: 40.5"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
               {...register('liters', {
                 onChange: (e) => handleLitersChange(e.target.value)
               })}
@@ -349,7 +349,7 @@ export default function EditFuelRecordPage() {
               type="number"
               step="any"
               placeholder="Calculado automaticamente"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-bold"
               {...register('pricePerLiter', {
                 onChange: (e) => handlePricePerLiterChange(e.target.value)
               })}
@@ -365,7 +365,7 @@ export default function EditFuelRecordPage() {
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider font-bold">Forma de Pagamento</label>
             <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer font-semibold"
               {...register('paymentMethod', {
                 onChange: (e) => handlePaymentMethodChange(e.target.value)
               })}
@@ -377,13 +377,13 @@ export default function EditFuelRecordPage() {
 
           {/* Parcelamento Condicional */}
           {isInstallment && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl animate-fade-in md:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-md animate-fade-in md:col-span-2">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider font-bold">Número de Parcelas</label>
                 <input
                   type="number"
                   min="1"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
+                  className="w-full bg-white border border-slate-200 rounded-md px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
                   {...register('installmentCount', {
                     onChange: (e) => handleInstallmentCountChange(e.target.value)
                   })}
@@ -397,7 +397,7 @@ export default function EditFuelRecordPage() {
                 <input
                   type="number"
                   step="any"
-                  className="w-full bg-white border border-blue-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
+                  className="w-full bg-white border border-blue-200 rounded-md px-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-bold"
                   {...register('installmentValue')}
                   onFocus={(e) => e.target.select()}
                 />
@@ -412,7 +412,7 @@ export default function EditFuelRecordPage() {
             <input
               type="text"
               placeholder="Ex: Posto Ipiranga Centro"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
               {...register('gasStation')}
             />
           </div>
@@ -423,7 +423,7 @@ export default function EditFuelRecordPage() {
             <input
               type="text"
               placeholder="Ex: São Paulo"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 font-medium"
               {...register('city')}
             />
           </div>
@@ -435,13 +435,13 @@ export default function EditFuelRecordPage() {
           <textarea
             rows={2}
             placeholder="Alguma nota sobre o abastecimento?"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 resize-none font-medium"
+            className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 resize-none font-medium"
             {...register('notes')}
           />
         </div>
 
         {/* Resumo visual do cálculo */}
-        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between text-xs font-semibold">
+        <div className="bg-slate-50 rounded-md p-4 border border-slate-100 flex items-center justify-between text-xs font-semibold">
           <span className="text-slate-500 flex items-center gap-1.5">
             <CreditCard className="h-4 w-4 text-slate-500" />
             Custo Total {isInstallment && '(A prazo)'}:
@@ -453,14 +453,14 @@ export default function EditFuelRecordPage() {
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
           <Link
             href={`/cars/${carId}`}
-            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-5 py-2.5 rounded-xl text-xs transition-all shadow-sm"
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-5 py-2.5 rounded-md text-xs transition-all shadow-sm"
           >
             Cancelar
           </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center gap-1.5"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-md text-xs transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center gap-1.5"
           >
             {submitting ? (
               <>
