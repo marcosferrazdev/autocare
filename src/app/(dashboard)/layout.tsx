@@ -16,19 +16,44 @@ import {
   LogOut,
   Menu,
   X,
-  Loader2
+  Loader2,
+  ChevronsLeft
 } from 'lucide-react';
 
-function SidebarLogo() {
+const SIDEBAR_COLLAPSED_KEY = 'rodanexo_sidebar_collapsed';
+const SIDEBAR_TRANSITION = 'duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]';
+
+function CollapsibleLabel({
+  collapsed,
+  className = '',
+  maxWidth = '160px',
+  children,
+}: {
+  collapsed: boolean;
+  className?: string;
+  maxWidth?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+    <span
+      className={`inline-block overflow-hidden whitespace-nowrap transition-all ${SIDEBAR_TRANSITION} ${className}`}
+      style={{ maxWidth: collapsed ? '0px' : maxWidth, opacity: collapsed ? 0 : 1 }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function SidebarLogo({ collapsed }: { collapsed: boolean }) {
+  return (
+    <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity min-w-0">
       <div className="h-9 w-9 rounded-md bg-white flex items-center justify-center shrink-0 shadow-sm">
         <RodaNexoIcon size={24} />
       </div>
-      <span className="text-base font-bold tracking-tight select-none">
+      <CollapsibleLabel collapsed={collapsed} className="text-base font-bold tracking-tight select-none">
         <span className="text-white">Roda</span>
         <span className="text-blue-400">Nexo</span>
-      </span>
+      </CollapsibleLabel>
     </Link>
   );
 }
@@ -36,8 +61,25 @@ function SidebarLogo() {
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Restaura preferência salva (evita "flash" expandido antes de recolher)
+  useEffect(() => {
+    const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    if (saved === '1') setCollapsed(true);
+    setHydrated(true);
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+      return next;
+    });
+  };
 
   // Redireciona se não estiver logado
   useEffect(() => {
@@ -67,7 +109,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   ];
 
   const navLinkClass = (isActive: boolean) =>
-    `relative flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors border-l-2 ${isActive
+    `relative flex items-center gap-3 px-4 py-2.5 text-sm font-medium border-l-2 transition-colors ${isActive
       ? 'border-blue-500 bg-white/[0.04] text-white'
       : 'border-transparent text-slate-500 hover:text-slate-200'
     }`;
@@ -75,23 +117,48 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-950 shrink-0 sticky top-0 h-screen">
+      <aside
+        className={`hidden md:flex flex-col bg-slate-950 shrink-0 sticky top-0 h-screen relative ${hydrated ? `transition-[width] ${SIDEBAR_TRANSITION}` : ''
+          } ${collapsed ? 'w-[72px]' : 'w-64'}`}
+      >
         {/* Logo */}
-        <div className="h-16 flex items-center px-5 border-b border-white/5 shrink-0">
-          <SidebarLogo />
+        <div className="h-16 flex items-center px-5 border-b border-white/5 shrink-0 overflow-hidden">
+          <SidebarLogo collapsed={collapsed} />
         </div>
 
+        {/* Botão recolher/expandir — ícone único que gira, nunca troca de forma abrupta */}
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          className={`absolute -right-3 top-[52px] h-6 w-6 rounded-full bg-slate-800 border border-white/10 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center shadow-md transition-colors z-10`}
+        >
+          <ChevronsLeft
+            className={`h-3.5 w-3.5 transition-transform ${SIDEBAR_TRANSITION} ${collapsed ? 'rotate-180' : ''}`}
+          />
+        </button>
+
         {/* Navigation */}
-        <nav className="flex-1 py-6 space-y-0.5 overflow-y-auto">
-          <p className="px-4 pb-3 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-600">
-            Menu
-          </p>
+        <nav className="flex-1 py-6 space-y-0.5 overflow-y-auto overflow-x-hidden">
+          <div className="px-4 pb-3 overflow-hidden">
+            <CollapsibleLabel
+              collapsed={collapsed}
+              maxWidth="120px"
+              className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-600"
+            >
+              Menu
+            </CollapsibleLabel>
+          </div>
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
-              <Link key={item.name} href={item.href} className={navLinkClass(isActive)}>
-                <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                {item.name}
+              <Link
+                key={item.name}
+                href={item.href}
+                title={collapsed ? item.name : undefined}
+                className={navLinkClass(isActive)}
+              >
+                <item.icon className={`h-5 w-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                <CollapsibleLabel collapsed={collapsed}>{item.name}</CollapsibleLabel>
               </Link>
             );
           })}
@@ -99,28 +166,29 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* User profile & Logout */}
         <div className="p-4 border-t border-white/5 shrink-0 space-y-2">
-          <div className="flex items-center gap-3 px-2 py-1.5">
+          <div className="flex items-center gap-3 px-2 py-1.5 overflow-hidden">
             <div className="h-9 w-9 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20 flex items-center justify-center font-bold text-sm shrink-0">
               {user.name.charAt(0).toUpperCase()}
             </div>
-            <div className="overflow-hidden">
+            <CollapsibleLabel collapsed={collapsed} maxWidth="150px">
               <p className="text-sm font-bold text-white truncate">{user.name}</p>
               <p className="text-xs text-slate-500 truncate">{user.email}</p>
-            </div>
+            </CollapsibleLabel>
           </div>
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-semibold text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
+            title={collapsed ? 'Sair' : undefined}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-semibold text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all overflow-hidden"
           >
-            <LogOut className="h-5 w-5" />
-            Sair
+            <LogOut className="h-5 w-5 shrink-0" />
+            <CollapsibleLabel collapsed={collapsed}>Sair</CollapsibleLabel>
           </button>
         </div>
       </aside>
 
       {/* Mobile Header / Navbar */}
       <header className="md:hidden h-16 bg-slate-950 flex items-center justify-between px-4 sticky top-0 z-40 shrink-0">
-        <SidebarLogo />
+        <SidebarLogo collapsed={false} />
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all"
