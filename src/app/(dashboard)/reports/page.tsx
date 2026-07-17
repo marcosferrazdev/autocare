@@ -5,17 +5,15 @@ import { useCar } from '@/components/providers/car-provider';
 import { formatCurrency, formatMileage, formatDate, formatConsumption } from '@/lib/formatters';
 import {
   BarChart3,
-  Calendar,
   Filter,
   Wrench,
   Fuel,
-  TrendingUp,
-  Download,
   AlertCircle,
   Loader2,
   Printer,
   ChevronRight,
-  Calculator
+  Droplets,
+  User,
 } from 'lucide-react';
 
 interface MaintenancePartLog {
@@ -60,10 +58,22 @@ interface FuelLog {
   installmentValue?: number | null;
 }
 
+interface WashLog {
+  id: string;
+  date: string;
+  mileage: number | null;
+  selfWash: boolean;
+  carWashName: string | null;
+  price: number;
+  washType: string | null;
+  notes: string | null;
+}
+
 export default function ReportsPage() {
   const { selectedCarId, selectedCar, loading: carLoading } = useCar();
   const [maintenances, setMaintenances] = useState<MaintenanceLog[]>([]);
   const [fuelRecords, setFuelRecords] = useState<FuelLog[]>([]);
+  const [washRecords, setWashRecords] = useState<WashLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +82,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState('');
   const [maintTypeFilter, setMaintTypeFilter] = useState('');
   const [fuelTypeFilter, setFuelTypeFilter] = useState('');
+  const [washTypeFilter, setWashTypeFilter] = useState('');
 
   // Linhas de manutenção expandidas (detalhe de peças)
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -103,8 +114,18 @@ export default function ReportsPage() {
       const fuelRes = await fetch(`/api/cars/${selectedCarId}/fuel-records?${fuelParams.toString()}`);
       const fuelData = fuelRes.ok ? await fuelRes.json() : [];
 
+      // Constrói query params para lavagens
+      const washParams = new URLSearchParams();
+      if (startDate) washParams.append('startDate', startDate);
+      if (endDate) washParams.append('endDate', endDate);
+      if (washTypeFilter) washParams.append('washType', washTypeFilter);
+
+      const washRes = await fetch(`/api/cars/${selectedCarId}/wash-records?${washParams.toString()}`);
+      const washData = washRes.ok ? await washRes.json() : [];
+
       setMaintenances(maintData);
       setFuelRecords(fuelData);
+      setWashRecords(washData);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar dados dos relatórios.');
@@ -115,12 +136,13 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchReportsData();
-  }, [selectedCarId, startDate, endDate, maintTypeFilter, fuelTypeFilter]);
+  }, [selectedCarId, startDate, endDate, maintTypeFilter, fuelTypeFilter, washTypeFilter]);
 
   // Cálculos consolidados para os dados filtrados
   const totalMaintCost = maintenances.reduce((sum, m) => sum + m.totalCost, 0);
   const totalFuelCost = fuelRecords.reduce((sum, f) => sum + f.totalPrice, 0);
-  const totalSpent = totalMaintCost + totalFuelCost;
+  const totalWashCost = washRecords.reduce((sum, w) => sum + (w.price || 0), 0);
+  const totalSpent = totalMaintCost + totalFuelCost + totalWashCost;
 
   const validConsumptions = fuelRecords
     .map(f => f.consumptionKmPerLiter)
@@ -134,7 +156,8 @@ export default function ReportsPage() {
   const allMileages = [
     ...(selectedCar ? [selectedCar.currentMileage] : []),
     ...maintenances.map(m => m.mileage),
-    ...fuelRecords.map(f => f.mileage)
+    ...fuelRecords.map(f => f.mileage),
+    ...washRecords.map(w => w.mileage).filter((m): m is number => m != null && m > 0),
   ].filter(m => m > 0);
 
   const minMileage = allMileages.length > 0 ? Math.min(...allMileages) : 0;
@@ -210,7 +233,7 @@ export default function ReportsPage() {
           <h2 className="font-bold text-slate-800 text-sm">Filtros Avançados</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs font-semibold text-slate-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-xs font-semibold text-slate-700">
           {/* Data Inicial */}
           <div>
             <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Data Inicial</label>
@@ -254,6 +277,7 @@ export default function ReportsPage() {
               <option value="Correia dentada">Correia dentada</option>
               <option value="Bateria">Bateria</option>
               <option value="Alinhamento e balanceamento">Alinhamento e balanceamento</option>
+              <option value="Calibragem de pneu">Calibragem de pneu</option>
               <option value="Outro">Outro</option>
             </select>
           </div>
@@ -272,6 +296,24 @@ export default function ReportsPage() {
               <option value="Diesel">Diesel</option>
               <option value="GNV">GNV</option>
               <option value="Flex">Flex</option>
+            </select>
+          </div>
+
+          {/* Tipo de Lavagem */}
+          <div>
+            <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Lavagem</label>
+            <select
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
+              value={washTypeFilter}
+              onChange={(e) => setWashTypeFilter(e.target.value)}
+            >
+              <option value="">Todas</option>
+              <option value="Completa">Completa</option>
+              <option value="Externa">Externa</option>
+              <option value="Interna">Interna</option>
+              <option value="Motor">Motor</option>
+              <option value="Detalhamento">Detalhamento</option>
+              <option value="Outro">Outro</option>
             </select>
           </div>
         </div>
@@ -294,16 +336,18 @@ export default function ReportsPage() {
           ) : (
             <p className="text-lg font-bold text-slate-800 mt-1">{formatCurrency(totalSpent)}</p>
           )}
-          <div className="mt-2 text-slate-400 text-xxs flex justify-between">
+          <div className="mt-2 text-slate-400 text-xxs flex flex-wrap gap-x-3 gap-y-0.5">
             {loading ? (
               <>
-                <div className="h-3 bg-slate-100 rounded w-1/3 animate-pulse"></div>
-                <div className="h-3 bg-slate-100 rounded w-1/3 animate-pulse"></div>
+                <div className="h-3 bg-slate-100 rounded w-1/4 animate-pulse"></div>
+                <div className="h-3 bg-slate-100 rounded w-1/4 animate-pulse"></div>
+                <div className="h-3 bg-slate-100 rounded w-1/4 animate-pulse"></div>
               </>
             ) : (
               <>
                 <span>Manut: {formatCurrency(totalMaintCost)}</span>
                 <span>Comb: {formatCurrency(totalFuelCost)}</span>
+                <span>Lav: {formatCurrency(totalWashCost)}</span>
               </>
             )}
           </div>
@@ -563,6 +607,78 @@ export default function ReportsPage() {
                         )}
                       </td>
                       <td className="py-3 text-right font-extrabold text-slate-950">{formatCurrency(f.totalPrice)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Wash Records Extrato */}
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3.5 mb-4">
+            <Droplets className="h-4.5 w-4.5 text-cyan-600" />
+            <h2 className="font-bold text-slate-800 text-sm">Extrato Completo de Lavagens ({washRecords.length})</h2>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3].map(n => (
+                <div key={n} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0 gap-4">
+                  <div className="h-4 bg-slate-100 rounded w-16"></div>
+                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-slate-100 rounded w-16"></div>
+                  <div className="h-4 bg-slate-100 rounded w-12"></div>
+                  <div className="h-4 bg-slate-100 rounded w-20"></div>
+                  <div className="h-4 bg-slate-200 rounded w-16"></div>
+                </div>
+              ))}
+            </div>
+          ) : washRecords.length === 0 ? (
+            <p className="text-slate-400 italic text-xs py-4 text-center">Nenhuma lavagem encontrada para os filtros ativos.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
+                    <th className="pb-3 pr-4">Data</th>
+                    <th className="pb-3 pr-4">Local / Quem</th>
+                    <th className="pb-3 pr-4">Tipo</th>
+                    <th className="pb-3 pr-4">Odômetro</th>
+                    <th className="pb-3 pr-4">Obs.</th>
+                    <th className="pb-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {washRecords.map((w) => (
+                    <tr key={w.id}>
+                      <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(w.date)}</td>
+                      <td className="py-3 pr-4 font-bold text-slate-900">
+                        {w.selfWash ? (
+                          <span className="inline-flex items-center gap-1 text-violet-700">
+                            <User className="h-3.5 w-3.5" /> Eu lavei
+                          </span>
+                        ) : (
+                          w.carWashName || 'Lava-jato'
+                        )}
+                      </td>
+                      <td className="py-3 pr-4 font-medium">
+                        {w.washType ? (
+                          <span className="px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-100 uppercase text-xxs font-bold">
+                            {w.washType}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">{w.mileage != null ? formatMileage(w.mileage) : '-'}</td>
+                      <td className="py-3 pr-4 text-slate-500 max-w-[200px] truncate" title={w.notes || undefined}>
+                        {w.notes || '-'}
+                      </td>
+                      <td className="py-3 text-right font-extrabold text-slate-950">
+                        {w.price > 0 ? formatCurrency(w.price) : 'Grátis'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

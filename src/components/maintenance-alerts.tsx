@@ -10,6 +10,7 @@ export interface ScheduleWithStatus {
   type: string;
   description: string | null;
   intervalKm: number | null;
+  intervalDays: number | null;
   intervalMonths: number | null;
   lastDoneMileage: number | null;
   lastDoneDate: string | null;

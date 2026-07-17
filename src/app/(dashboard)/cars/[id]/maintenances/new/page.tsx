@@ -246,6 +246,7 @@ export default function NewMaintenancePage() {
                 <option value="Correia dentada">Correia dentada</option>
                 <option value="Bateria">Bateria</option>
                 <option value="Alinhamento e balanceamento">Alinhamento e balanceamento</option>
+                <option value="Calibragem de pneu">Calibragem de pneu</option>
                 <option value="Outro">Outro</option>
               </select>
               {errors.type && <p className="text-red-600 text-xxs mt-1 font-semibold">{errors.type.message}</p>}

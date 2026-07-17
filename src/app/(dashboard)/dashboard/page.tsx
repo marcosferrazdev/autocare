@@ -12,12 +12,12 @@ import {
   TrendingUp,
   Coins,
   Milestone,
-  ArrowUpRight,
   Activity,
   Plus,
   Loader2,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Droplets,
 } from 'lucide-react';
 import {
   BarChart,
@@ -43,6 +43,7 @@ interface DashboardData {
   metrics: {
     totalMaintenanceCost: number;
     totalFuelCost: number;
+    totalWashCost: number;
     totalCarCost: number;
     latestMaintenance: {
       date: string;
@@ -54,6 +55,12 @@ interface DashboardData {
       liters: number;
       totalPrice: number;
     } | null;
+    latestWashRecord: {
+      date: string;
+      label: string;
+      price: number;
+      selfWash: boolean;
+    } | null;
     averageConsumption: number | null;
     costPerKm: number;
   };
@@ -62,6 +69,7 @@ interface DashboardData {
       month: string;
       maintenance: number;
       fuel: number;
+      wash: number;
       total: number;
     }[];
     expensesByType: {
@@ -79,6 +87,7 @@ interface DashboardData {
 const SERIES = {
   maintenance: '#2a78d6', // azul — manutenção
   fuel: '#1baf7a', // aqua — combustível
+  wash: '#0891b2', // cyan — lavagens
 };
 
 const AXIS_TICK = { fontSize: 11, fill: '#898781' };
@@ -202,7 +211,10 @@ export default function DashboardPage() {
 
   const { metrics, charts } = data;
 
-  const isNewCar = charts.monthlyExpenses.length === 0 && charts.expensesByType.length === 0;
+  const isNewCar =
+    charts.monthlyExpenses.length === 0 &&
+    charts.expensesByType.length === 0 &&
+    !metrics.latestWashRecord;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -253,7 +265,9 @@ export default function DashboardPage() {
             <Coins className="h-3.5 w-3.5 text-slate-300" />
           </div>
           <p className="text-2xl font-bold text-slate-900 tracking-tight">{formatCurrency(metrics.totalCarCost)}</p>
-          <p className="text-xxs text-slate-400 mt-1.5">manutenções + combustível</p>
+          <p className="text-xxs text-slate-400 mt-1.5">
+            manut. {formatCurrency(metrics.totalMaintenanceCost)} · comb. {formatCurrency(metrics.totalFuelCost)} · lav. {formatCurrency(metrics.totalWashCost ?? 0)}
+          </p>
         </div>
 
         {/* Card 2: Quilometragem */}
@@ -294,7 +308,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Sub-Metrics Row: Last Activities */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Last Maintenance */}
         <div className="bg-white p-5 rounded-lg border border-slate-200">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
@@ -348,6 +362,34 @@ export default function DashboardPage() {
             <div className="py-2 text-slate-400 text-xs italic">Nenhum abastecimento registrado para este carro.</div>
           )}
         </div>
+
+        {/* Last Wash */}
+        <div className="bg-white p-5 rounded-lg border border-slate-200">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Droplets className="h-4.5 w-4.5 text-cyan-600" />
+              <h3 className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-[0.15em]">Última Lavagem</h3>
+            </div>
+            {metrics.latestWashRecord && (
+              <span className="text-xs font-semibold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md">
+                {metrics.latestWashRecord.price > 0
+                  ? formatCurrency(metrics.latestWashRecord.price)
+                  : 'Grátis'}
+              </span>
+            )}
+          </div>
+          {metrics.latestWashRecord ? (
+            <div className="space-y-1">
+              <p className="text-slate-800 text-sm font-bold truncate">{metrics.latestWashRecord.label}</p>
+              <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{formatDate(metrics.latestWashRecord.date)}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="py-2 text-slate-400 text-xs italic">Nenhuma lavagem registrada para este carro.</div>
+          )}
+        </div>
       </div>
 
       {/* Empty Charts State */}
@@ -368,7 +410,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-[0.15em]">Gastos por Mês</h3>
                 {/* Legenda: 2 séries, identidade nunca só pela cor */}
-                <div className="flex items-center gap-4 text-xs text-slate-500">
+                <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap justify-end">
                   <span className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SERIES.fuel }} />
                     Combustível
@@ -376,6 +418,10 @@ export default function DashboardPage() {
                   <span className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SERIES.maintenance }} />
                     Manutenção
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SERIES.wash }} />
+                    Lavagens
                   </span>
                 </div>
               </div>
@@ -394,8 +440,9 @@ export default function DashboardPage() {
                       cursor={{ fill: 'rgba(15, 23, 42, 0.04)' }}
                       content={<ChartTooltip formatter={(v) => formatCurrency(v)} />}
                     />
-                    <Bar name="Combustível" dataKey="fuel" fill={SERIES.fuel} radius={[3, 3, 0, 0]} maxBarSize={18} />
-                    <Bar name="Manutenção" dataKey="maintenance" fill={SERIES.maintenance} radius={[3, 3, 0, 0]} maxBarSize={18} />
+                    <Bar name="Combustível" dataKey="fuel" fill={SERIES.fuel} radius={[3, 3, 0, 0]} maxBarSize={14} />
+                    <Bar name="Manutenção" dataKey="maintenance" fill={SERIES.maintenance} radius={[3, 3, 0, 0]} maxBarSize={14} />
+                    <Bar name="Lavagens" dataKey="wash" fill={SERIES.wash} radius={[3, 3, 0, 0]} maxBarSize={14} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

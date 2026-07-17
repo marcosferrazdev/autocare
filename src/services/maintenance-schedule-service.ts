@@ -5,6 +5,7 @@ export interface CreateScheduleInput {
   type: string;
   description?: string | null;
   intervalKm?: number | null;
+  intervalDays?: number | null;
   intervalMonths?: number | null;
   lastDoneMileage?: number | null;
   lastDoneDate?: string | Date | null;
@@ -24,6 +25,22 @@ export interface UpcomingSchedule extends MaintenanceSchedule {
 const KM_WARNING_THRESHOLD = 500;
 const DAYS_WARNING_THRESHOLD = 15;
 
+/** Aviso em dias: em intervalos curtos (ex.: lavagem 14 dias), usa ~25% do intervalo. */
+function daysWarningThreshold(intervalDays: number | null | undefined, intervalMonths: number | null | undefined): number {
+  if (intervalDays && intervalDays > 0) {
+    return Math.max(2, Math.min(DAYS_WARNING_THRESHOLD, Math.ceil(intervalDays * 0.25)));
+  }
+  if (intervalMonths && intervalMonths > 0) {
+    return DAYS_WARNING_THRESHOLD;
+  }
+  return DAYS_WARNING_THRESHOLD;
+}
+
+function earliestDate(dates: Date[]): Date | null {
+  if (dates.length === 0) return null;
+  return dates.reduce((a, b) => (a.getTime() <= b.getTime() ? a : b));
+}
+
 export class MaintenanceScheduleService {
   /**
    * Garante que o carro pertence ao usuário.
@@ -41,7 +58,7 @@ export class MaintenanceScheduleService {
   /**
    * Lista lembretes de um carro com status calculado (atrasado, próximo, ok).
    * A referência de "última execução" combina o campo manual do lembrete com a
-   * manutenção mais recente do mesmo tipo registrada no histórico.
+   * manutenção mais recente do mesmo tipo (ou lavagem, para tipo "Lavagem").
    */
   static async listWithStatus(carId: string, userId: string): Promise<UpcomingSchedule[]> {
     const car = await this.verifyCarOwner(carId, userId);
@@ -53,16 +70,35 @@ export class MaintenanceScheduleService {
 
     if (schedules.length === 0) return [];
 
-    // Última manutenção de cada tipo, para usar como baseline automático
-    const maintenances = await prisma.maintenance.findMany({
-      where: { carId, type: { in: schedules.map((s) => s.type) } },
-      orderBy: { date: 'desc' },
-    });
+    const maintenanceTypes = schedules.map((s) => s.type).filter((t) => t !== 'Lavagem');
 
-    const latestByType = new Map<string, { mileage: number; date: Date }>();
+    // Última manutenção de cada tipo, para usar como baseline automático
+    const maintenances =
+      maintenanceTypes.length > 0
+        ? await prisma.maintenance.findMany({
+            where: { carId, type: { in: maintenanceTypes } },
+            orderBy: { date: 'desc' },
+          })
+        : [];
+
+    const latestByType = new Map<string, { mileage: number | null; date: Date }>();
     for (const m of maintenances) {
       if (!latestByType.has(m.type)) {
         latestByType.set(m.type, { mileage: m.mileage, date: m.date });
+      }
+    }
+
+    // Tipo Lavagem: cruza com o histórico de lavagens
+    if (schedules.some((s) => s.type === 'Lavagem')) {
+      const lastWash = await prisma.washRecord.findFirst({
+        where: { carId },
+        orderBy: { date: 'desc' },
+      });
+      if (lastWash) {
+        latestByType.set('Lavagem', {
+          mileage: lastWash.mileage ?? null,
+          date: lastWash.date,
+        });
       }
     }
 
@@ -76,7 +112,7 @@ export class MaintenanceScheduleService {
       let baselineDate: Date | null = schedule.lastDoneDate;
 
       if (latest) {
-        if (baselineMileage === null || latest.mileage > baselineMileage) {
+        if (latest.mileage !== null && (baselineMileage === null || latest.mileage > baselineMileage)) {
           baselineMileage = latest.mileage;
         }
         if (baselineDate === null || latest.date > baselineDate) {
@@ -87,15 +123,26 @@ export class MaintenanceScheduleService {
       const nextDueMileage =
         schedule.intervalKm && baselineMileage !== null ? baselineMileage + schedule.intervalKm : null;
 
-      let nextDueDate: Date | null = null;
-      if (schedule.intervalMonths && baselineDate !== null) {
-        nextDueDate = new Date(baselineDate);
-        nextDueDate.setUTCMonth(nextDueDate.getUTCMonth() + schedule.intervalMonths);
+      const dueDateCandidates: Date[] = [];
+      if (baselineDate !== null) {
+        if (schedule.intervalMonths) {
+          const d = new Date(baselineDate);
+          d.setUTCMonth(d.getUTCMonth() + schedule.intervalMonths);
+          dueDateCandidates.push(d);
+        }
+        if (schedule.intervalDays) {
+          const d = new Date(baselineDate);
+          d.setUTCDate(d.getUTCDate() + schedule.intervalDays);
+          dueDateCandidates.push(d);
+        }
       }
+      const nextDueDate = earliestDate(dueDateCandidates);
 
       const kmRemaining = nextDueMileage !== null ? Math.round(nextDueMileage - car.currentMileage) : null;
       const daysRemaining =
         nextDueDate !== null ? Math.ceil((nextDueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+      const dayWarn = daysWarningThreshold(schedule.intervalDays, schedule.intervalMonths);
 
       let status: ScheduleStatus;
       if (kmRemaining === null && daysRemaining === null) {
@@ -104,7 +151,7 @@ export class MaintenanceScheduleService {
         status = 'atrasado';
       } else if (
         (kmRemaining !== null && kmRemaining <= KM_WARNING_THRESHOLD) ||
-        (daysRemaining !== null && daysRemaining <= DAYS_WARNING_THRESHOLD)
+        (daysRemaining !== null && daysRemaining <= dayWarn)
       ) {
         status = 'proximo';
       } else {
@@ -127,7 +174,7 @@ export class MaintenanceScheduleService {
   }
 
   /**
-   * Cria um lembrete. Um carro só pode ter um lembrete por tipo de manutenção.
+   * Cria um lembrete. Um carro só pode ter um lembrete por tipo.
    */
   static async create(carId: string, userId: string, input: CreateScheduleInput) {
     await this.verifyCarOwner(carId, userId);
@@ -145,6 +192,7 @@ export class MaintenanceScheduleService {
         type: input.type,
         description: input.description || null,
         intervalKm: input.intervalKm || null,
+        intervalDays: input.intervalDays || null,
         intervalMonths: input.intervalMonths || null,
         lastDoneMileage: input.lastDoneMileage ?? null,
         lastDoneDate: input.lastDoneDate ? new Date(input.lastDoneDate) : null,
@@ -180,6 +228,7 @@ export class MaintenanceScheduleService {
         type: input.type,
         description: input.description || null,
         intervalKm: input.intervalKm || null,
+        intervalDays: input.intervalDays || null,
         intervalMonths: input.intervalMonths || null,
         lastDoneMileage: input.lastDoneMileage ?? null,
         lastDoneDate: input.lastDoneDate ? new Date(input.lastDoneDate) : null,

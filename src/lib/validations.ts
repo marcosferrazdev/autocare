@@ -70,6 +70,7 @@ export const MaintenanceSchema = z.object({
       'Correia dentada',
       'Bateria',
       'Alinhamento e balanceamento',
+      'Calibragem de pneu',
       'Outro',
     ],
     { message: 'Tipo de manutenção inválido' }
@@ -126,7 +127,7 @@ export const VehicleWebInfoSchema = z.object({
   sourceUrl: z.string().optional().nullable(),
 });
 
-// Validação de Lembrete de Manutenção Preventiva
+// Validação de Lembrete de Manutenção Preventiva / Lavagem
 export const MaintenanceScheduleSchema = z
   .object({
     type: z.enum(
@@ -143,18 +144,21 @@ export const MaintenanceScheduleSchema = z
         'Correia dentada',
         'Bateria',
         'Alinhamento e balanceamento',
+        'Calibragem de pneu',
+        'Lavagem',
         'Outro',
       ],
-      { message: 'Tipo de manutenção inválido' }
+      { message: 'Tipo de lembrete inválido' }
     ),
     description: z.string().max(200, 'A descrição não pode ser muito longa').optional().nullable().or(z.literal('')),
     intervalKm: z.coerce.number().gt(0, 'O intervalo em km deve ser maior que zero').optional().nullable(),
+    intervalDays: z.coerce.number().int().gt(0, 'O intervalo em dias deve ser maior que zero').optional().nullable(),
     intervalMonths: z.coerce.number().int().gt(0, 'O intervalo em meses deve ser maior que zero').optional().nullable(),
     lastDoneMileage: z.coerce.number().min(0, 'A quilometragem não pode ser negativa').optional().nullable(),
     lastDoneDate: z.string().optional().nullable().or(z.literal('')),
   })
-  .refine((data) => data.intervalKm || data.intervalMonths, {
-    message: 'Informe pelo menos um intervalo (km ou meses)',
+  .refine((data) => data.intervalKm || data.intervalDays || data.intervalMonths, {
+    message: 'Informe pelo menos um intervalo (km, dias ou meses)',
     path: ['intervalKm'],
   });
 
@@ -189,3 +193,46 @@ export const UpgradeItemSchema = z.object({
   status: z.enum(['Pendente', 'Concluido']).default('Pendente'),
   priority: z.enum(['Baixa', 'Média', 'Alta']).default('Média'),
 });
+
+// Validação de Lavagem
+export const WashRecordBaseSchema = z.object({
+  date: z.string().min(1, 'A data é obrigatória'),
+  mileage: z.coerce.number().min(0, 'A quilometragem não pode ser negativa').optional().nullable(),
+  selfWash: z.boolean().default(false),
+  carWashName: z.string().max(120, 'Nome do lava-jato muito longo').optional().nullable().or(z.literal('')),
+  price: z.coerce.number().min(0, 'O preço não pode ser negativo').optional().nullable(),
+  washType: z
+    .enum(['Completa', 'Externa', 'Interna', 'Motor', 'Detalhamento', 'Outro'])
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  notes: z.string().max(1000, 'Observações muito longas').optional().nullable().or(z.literal('')),
+  // Até 3 data URLs JPEG comprimidos no cliente
+  photos: z
+    .array(
+      z
+        .string()
+        .max(400_000, 'Uma das fotos é muito grande. Escolha uma imagem menor.')
+        .refine((s) => s.startsWith('data:image/'), 'Formato de imagem inválido')
+    )
+    .max(3, 'Máximo de 3 fotos por lavagem')
+    .optional()
+    .nullable(),
+  clearPhoto: z.boolean().optional(),
+});
+
+export const WashRecordSchema = WashRecordBaseSchema.refine(
+  (data) => data.selfWash || (data.carWashName && data.carWashName.trim().length > 0),
+  { message: 'Informe o lava-jato quando não for lavagem própria', path: ['carWashName'] }
+);
+
+export const WashRecordUpdateSchema = WashRecordBaseSchema.partial().refine(
+  (data) => {
+    if (data.selfWash === true) return true;
+    if (data.selfWash === false) {
+      return Boolean(data.carWashName && data.carWashName.trim().length > 0);
+    }
+    return true;
+  },
+  { message: 'Informe o lava-jato quando não for lavagem própria', path: ['carWashName'] }
+);

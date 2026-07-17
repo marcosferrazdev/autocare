@@ -41,6 +41,7 @@ model Car {
   upgradeItems    UpgradeItem[]
   schedules       MaintenanceSchedule[]
   trips           Trip[]
+  washRecords     WashRecord[]
 }
 
 model Maintenance {
@@ -125,6 +126,7 @@ model MaintenanceSchedule {
   type            String
   description     String?
   intervalKm      Float?
+  intervalDays    Int?
   intervalMonths  Int?
   lastDoneMileage Float?
   lastDoneDate    DateTime?
@@ -163,4 +165,21 @@ model UpgradeItem {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   car            Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+model WashRecord {
+  id          String   @id @default(uuid())
+  carId       String
+  date        DateTime
+  mileage     Float?
+  selfWash    Boolean  @default(false)
+  carWashName String?
+  price       Float    @default(0)
+  washType    String?  // "Completa" | "Externa" | "Interna" | "Motor" | "Detalhamento" | "Outro"
+  notes       String?
+  // JSON array de data URLs (máx. 3) ou 1 data URL legado; comprimidos no cliente
+  photoData   String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
 }
