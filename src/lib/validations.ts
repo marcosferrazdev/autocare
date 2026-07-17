@@ -269,6 +269,22 @@ export const InsurancePolicySchema = z.object({
   syncPaymentReminder: z.boolean().optional().default(true),
 });
 
+// Financiamento do veículo
+export const FinancingSchema = z.object({
+  institution: z.string().min(1, 'Informe o banco/financeira').max(120),
+  totalAmount: z.coerce.number().min(0).optional().nullable(),
+  downPayment: z.coerce.number().min(0).optional().nullable(),
+  installmentCount: z.coerce.number().int().min(0, 'Nº de parcelas inválido').max(600).optional().nullable(),
+  installmentValue: z.coerce.number().min(0, 'O valor da parcela não pode ser negativo').optional().nullable(),
+  interestRate: z.coerce.number().min(0).max(100).optional().nullable(),
+  paymentDay: z.coerce.number().int().min(1, 'Dia inválido').max(31, 'Dia inválido').optional().nullable(),
+  firstInstallmentDate: z.string().optional().nullable().or(z.literal('')),
+  contractNumber: z.string().max(60).optional().nullable().or(z.literal('')),
+  notes: z.string().max(2000).optional().nullable().or(z.literal('')),
+  // se true, cria/atualiza lembrete mensal "Financiamento" na aba Lembretes
+  syncPaymentReminder: z.boolean().optional().default(true),
+});
+
 // Utilização do seguro
 export const InsuranceClaimSchema = z.object({
   date: z.string().min(1, 'A data é obrigatória'),

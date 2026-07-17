@@ -33,6 +33,7 @@ const SCHEDULE_TYPES = [
   'Calibragem de pneu',
   'Lavagem',
   'Seguro',
+  'Financiamento',
   'Corretiva',
   'Outro',
 ];

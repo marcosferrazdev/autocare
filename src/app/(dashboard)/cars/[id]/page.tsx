@@ -7,6 +7,7 @@ import { formatCurrency, formatMileage, formatDate, formatConsumption } from '@/
 import { MAX_WASH_PHOTOS, TARGET_PHOTO_DATA_URL_LEN, MAX_PHOTO_DATA_URL_LEN } from '@/lib/wash-photos';
 import { SchedulesPanel } from '@/components/schedules-panel';
 import { InsurancePanel } from '@/components/insurance-panel';
+import { FinancingPanel } from '@/components/financing-panel';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
@@ -38,6 +39,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  Landmark,
 } from 'lucide-react';
 
 const WASH_TYPES = ['Completa', 'Externa', 'Interna', 'Motor', 'Detalhamento', 'Outro'] as const;
@@ -232,13 +234,14 @@ export default function CarDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Aba ativa sincronizada com ?tab= (sidenav e deep-link)
-  type CarTab = 'historico' | 'upgrades' | 'lembretes' | 'lavadas' | 'seguro';
+  type CarTab = 'historico' | 'upgrades' | 'lembretes' | 'lavadas' | 'seguro' | 'financiamento';
   const tabFromUrl = searchParams.get('tab');
   const activeTab: CarTab =
     tabFromUrl === 'lembretes' ||
     tabFromUrl === 'upgrades' ||
     tabFromUrl === 'lavadas' ||
     tabFromUrl === 'seguro' ||
+    tabFromUrl === 'financiamento' ||
     tabFromUrl === 'historico'
       ? tabFromUrl
       : 'historico';
@@ -824,6 +827,17 @@ export default function CarDetailPage() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('financiamento')}
+            className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'financiamento'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+          >
+            <Landmark className="h-4 w-4 shrink-0" />
+            Financiamento
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('lembretes')}
             className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'lembretes'
               ? 'border-blue-600 text-blue-600'
@@ -1099,6 +1113,10 @@ export default function CarDetailPage() {
       ) : activeTab === 'seguro' ? (
         <div className="h-full min-h-0">
           <InsurancePanel carId={car.id} fillHeight />
+        </div>
+      ) : activeTab === 'financiamento' ? (
+        <div className="h-full min-h-0">
+          <FinancingPanel carId={car.id} fillHeight />
         </div>
       ) : activeTab === 'lavadas' ? (
         /* Lavagens Tab View */

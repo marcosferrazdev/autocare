@@ -44,6 +44,7 @@ model Car {
   washRecords     WashRecord[]
   insurancePolicy InsurancePolicy?
   insuranceClaims InsuranceClaim[]
+  financing       Financing?
 }
 
 model Maintenance {
@@ -205,6 +206,25 @@ model InsurancePolicy {
   updatedAt      DateTime @updatedAt
   car            Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
   claims         InsuranceClaim[]
+}
+
+// Financiamento do veículo (1 por carro)
+model Financing {
+  id                   String    @id @default(uuid())
+  carId                String    @unique
+  institution          String    // banco / financeira
+  totalAmount          Float?    // valor financiado
+  downPayment          Float?    // entrada
+  installmentCount     Int       @default(0) // nº total de parcelas
+  installmentValue     Float     @default(0) // valor da parcela
+  interestRate         Float?    // taxa de juros % a.m.
+  paymentDay           Int?      // dia do mês do vencimento (1-31)
+  firstInstallmentDate DateTime? // data da 1ª parcela
+  contractNumber       String?
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  car                  Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
 }
 
 // Utilização do seguro (sinistro, guincho, etc.)
