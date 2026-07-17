@@ -92,8 +92,12 @@ interface InsuranceClaimLog {
 }
 
 interface FinancingLog {
+  id: string;
+  kind: string;
   institution: string;
   installmentValue: number;
+  monthlyDiscount: number;
+  netInstallment: number;
   installmentCount: number;
   paymentDay: number | null;
   firstInstallmentDate: string | null;
@@ -121,7 +125,7 @@ export default function ReportsPage() {
   const [washRecords, setWashRecords] = useState<WashLog[]>([]);
   const [insurancePolicy, setInsurancePolicy] = useState<InsurancePolicyLog | null>(null);
   const [insuranceClaims, setInsuranceClaims] = useState<InsuranceClaimLog[]>([]);
-  const [financing, setFinancing] = useState<FinancingLog | null>(null);
+  const [financings, setFinancings] = useState<FinancingLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -175,14 +179,14 @@ export default function ReportsPage() {
       const insData = insRes.ok ? await insRes.json() : { policy: null, claims: [] };
 
       const finRes = await fetch(`/api/cars/${selectedCarId}/financing`);
-      const finData = finRes.ok ? await finRes.json() : { financing: null };
+      const finData = finRes.ok ? await finRes.json() : { financings: [] };
 
       setMaintenances(maintData);
       setFuelRecords(fuelData);
       setWashRecords(washData);
       setInsurancePolicy(insData.policy || null);
       setInsuranceClaims(insData.claims || []);
-      setFinancing(finData.financing || null);
+      setFinancings(finData.financings || []);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar dados dos relatórios.');
@@ -234,30 +238,30 @@ export default function ReportsPage() {
 
   const totalInsuranceCost = totalInsurancePremiums + totalInsuranceClaims;
 
-  // Financiamento no período filtrado (parcelas decorridas × valor da parcela)
-  let totalFinancingCost = 0;
-  let financingPaidInstallments = 0;
-  const financingInstallment = financing?.installmentValue ?? 0;
-  if (financing && financingInstallment > 0 && financing.installmentCount > 0) {
-    const finStart = new Date(
-      financing.firstInstallmentDate || financing.createdAt || new Date().toISOString()
-    );
-    // última parcela = 1ª + (nº parcelas - 1) meses
-    const finEnd = new Date(finStart);
-    finEnd.setMonth(finEnd.getMonth() + financing.installmentCount - 1);
-
-    const rangeStart = filterStart && filterStart > finStart ? filterStart : finStart;
-    const rangeEnd = filterEnd && filterEnd < finEnd ? filterEnd : finEnd;
-    const endBound = filterEnd ? rangeEnd : new Date(Math.min(finEnd.getTime(), Date.now()));
-    const startBound = filterStart ? rangeStart : finStart;
-    if (endBound >= startBound) {
-      financingPaidInstallments = Math.min(
-        financing.installmentCount,
-        countMonthsInRange(startBound, endBound)
+  // Financiamentos/empréstimos no período (parcelas decorridas × valor da parcela)
+  const financingBreakdown = financings.map((f) => {
+    const net = f.netInstallment ?? Math.max(0, f.installmentValue - (f.monthlyDiscount ?? 0));
+    let installmentsInRange = 0;
+    if (f.installmentValue > 0 && f.installmentCount > 0) {
+      const finStart = new Date(
+        f.firstInstallmentDate || f.createdAt || new Date().toISOString()
       );
-      totalFinancingCost = financingPaidInstallments * financingInstallment;
+      // última parcela = 1ª + (nº parcelas - 1) meses
+      const finEnd = new Date(finStart);
+      finEnd.setMonth(finEnd.getMonth() + f.installmentCount - 1);
+
+      const rangeStart = filterStart && filterStart > finStart ? filterStart : finStart;
+      const rangeEnd = filterEnd && filterEnd < finEnd ? filterEnd : finEnd;
+      const endBound = filterEnd ? rangeEnd : new Date(Math.min(finEnd.getTime(), Date.now()));
+      const startBound = filterStart ? rangeStart : finStart;
+      if (endBound >= startBound) {
+        installmentsInRange = Math.min(f.installmentCount, countMonthsInRange(startBound, endBound));
+      }
     }
-  }
+    return { ...f, netInstallment: net, installmentsInRange, cost: installmentsInRange * net };
+  });
+
+  const totalFinancingCost = financingBreakdown.reduce((sum, f) => sum + f.cost, 0);
 
   const totalSpent =
     totalMaintCost + totalFuelCost + totalWashCost + totalInsuranceCost + totalFinancingCost;
@@ -913,62 +917,67 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Financiamento */}
+        {/* Financiamentos e empréstimos */}
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3.5 mb-4 gap-2">
             <div className="flex items-center gap-2">
               <Landmark className="h-4.5 w-4.5 text-emerald-600" />
-              <h2 className="font-bold text-slate-800 text-sm">Financiamento no período</h2>
+              <h2 className="font-bold text-slate-800 text-sm">Financiamentos e empréstimos no período</h2>
             </div>
-            {!loading && financing && financingInstallment > 0 && (
-              <div className="text-xxs text-slate-500 font-semibold flex flex-wrap gap-x-3">
-                <span>
-                  Parcelas no filtro:{' '}
-                  <strong className="text-slate-800">{financingPaidInstallments}</strong>
-                  <span className="text-slate-400 font-medium">
-                    {' '}
-                    ({formatCurrency(financingInstallment)}/mês)
-                  </span>
-                </span>
-                <span>
-                  Total:{' '}
-                  <strong className="text-emerald-700">{formatCurrency(totalFinancingCost)}</strong>
-                </span>
+            {!loading && financingBreakdown.length > 0 && (
+              <div className="text-xxs text-slate-500 font-semibold">
+                Total:{' '}
+                <strong className="text-emerald-700">{formatCurrency(totalFinancingCost)}</strong>
               </div>
             )}
           </div>
 
           {loading ? (
             <div className="h-16 bg-slate-50 rounded animate-pulse" />
-          ) : !financing ? (
+          ) : financingBreakdown.length === 0 ? (
             <p className="text-slate-400 italic text-xs py-4 text-center">
-              Nenhum financiamento cadastrado para este veículo.
+              Nenhum financiamento ou empréstimo cadastrado para este veículo.
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-100">
-                <p className="text-[10px] font-bold uppercase text-emerald-400 tracking-wider">Instituição</p>
-                <p className="font-bold text-slate-900 mt-1">{financing.institution}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Parcela</p>
-                <p className="font-bold text-slate-900 mt-1">
-                  {financingInstallment > 0 ? formatCurrency(financingInstallment) : '—'}
-                  {financing.paymentDay != null && (
-                    <span className="text-slate-400 font-medium text-[11px]"> · dia {financing.paymentDay}</span>
-                  )}
-                </p>
-              </div>
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Parcelas no filtro</p>
-                <p className="font-bold text-slate-900 mt-1">
-                  {financingPaidInstallments} de {financing.installmentCount}
-                </p>
-              </div>
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Total no filtro</p>
-                <p className="font-bold text-slate-900 mt-1">{formatCurrency(totalFinancingCost)}</p>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
+                    <th className="pb-3 pr-4">Tipo</th>
+                    <th className="pb-3 pr-4">Credor</th>
+                    <th className="pb-3 pr-4">Parcela</th>
+                    <th className="pb-3 pr-4">Parcelas no filtro</th>
+                    <th className="pb-3 text-right">Total no filtro</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {financingBreakdown.map((f) => (
+                    <tr key={f.id}>
+                      <td className="py-3 pr-4">
+                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase text-xxs font-bold">
+                          {f.kind}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4 font-bold text-slate-900">{f.institution}</td>
+                      <td className="py-3 pr-4">
+                        {f.installmentValue > 0 ? formatCurrency(f.netInstallment) : '—'}
+                        {f.monthlyDiscount > 0 && (
+                          <span className="text-emerald-600 text-xxs font-semibold">
+                            {' '}(−{formatCurrency(f.monthlyDiscount)} ajuda)
+                          </span>
+                        )}
+                        {f.paymentDay != null && (
+                          <span className="text-slate-400"> · dia {f.paymentDay}</span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">
+                        {f.installmentsInRange} {f.installmentCount > 0 ? `de ${f.installmentCount}` : ''}
+                      </td>
+                      <td className="py-3 text-right font-extrabold text-slate-950">{formatCurrency(f.cost)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

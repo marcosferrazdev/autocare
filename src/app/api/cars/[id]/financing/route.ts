@@ -15,16 +15,16 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
 
     const { id: carId } = await params;
-    const data = await FinancingService.getByCar(carId, user.id);
+    const data = await FinancingService.listByCar(carId, user.id);
     return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
-    console.error('Erro ao buscar financiamento:', error);
+    console.error('Erro ao buscar financiamentos:', error);
     const status = error.message?.includes('autorizado') ? 403 : 500;
-    return NextResponse.json({ error: error.message || 'Erro ao buscar financiamento.' }, { status });
+    return NextResponse.json({ error: error.message || 'Erro ao buscar financiamentos.' }, { status });
   }
 }
 
-export async function PUT(request: Request, { params }: RouteParams) {
+export async function POST(request: Request, { params }: RouteParams) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
@@ -42,28 +42,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
-    const data = await FinancingService.upsert(carId, user.id, result.data);
-    return NextResponse.json(data, { status: 200 });
+    const financing = await FinancingService.create(carId, user.id, result.data);
+    return NextResponse.json(financing, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao salvar financiamento:', error);
+    console.error('Erro ao criar financiamento:', error);
     const status = error.message?.includes('autorizado') ? 403 : 500;
-    return NextResponse.json({ error: error.message || 'Erro ao salvar financiamento.' }, { status });
-  }
-}
-
-export async function DELETE(_request: Request, { params }: RouteParams) {
-  try {
-    const user = await getAuthenticatedUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
-    }
-
-    const { id: carId } = await params;
-    const data = await FinancingService.delete(carId, user.id);
-    return NextResponse.json(data, { status: 200 });
-  } catch (error: any) {
-    console.error('Erro ao excluir financiamento:', error);
-    const status = error.message?.includes('autorizado') ? 403 : 500;
-    return NextResponse.json({ error: error.message || 'Erro ao excluir financiamento.' }, { status });
+    return NextResponse.json({ error: error.message || 'Erro ao criar financiamento.' }, { status });
   }
 }

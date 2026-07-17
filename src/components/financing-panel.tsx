@@ -1,35 +1,32 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   Landmark,
+  HandCoins,
   Plus,
   Loader2,
   Edit,
   Trash2,
-  Calendar,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
   X,
   Save,
-  FileText,
-  Building2,
-  Banknote,
-  Percent,
+  CheckCircle2,
+  Undo2,
 } from 'lucide-react';
 
 interface Financing {
   id: string;
+  kind: string;
   institution: string;
   totalAmount: number | null;
   downPayment: number | null;
   installmentCount: number;
   installmentValue: number;
+  monthlyDiscount: number;
+  netInstallment: number;
   interestRate: number | null;
   paymentDay: number | null;
   firstInstallmentDate: string | null;
@@ -42,62 +39,35 @@ interface Financing {
   nextPaymentDate: string | null;
   daysToPayment: number | null;
   paymentStatus: 'atrasado' | 'proximo' | 'ok' | null;
+  paidThisPeriod: boolean;
 }
 
+const KINDS = ['Financiamento', 'Empréstimo'] as const;
+
 const emptyForm = {
+  kind: 'Financiamento' as (typeof KINDS)[number],
   institution: '',
   totalAmount: '',
   downPayment: '',
   installmentCount: '',
   installmentValue: '',
+  monthlyDiscount: '',
   interestRate: '',
   paymentDay: '',
   firstInstallmentDate: '',
   contractNumber: '',
   notes: '',
-  syncPaymentReminder: true,
 };
-
-function paymentBanner(f: Financing) {
-  if (f.remainingInstallments <= 0) {
-    return {
-      className: 'border-emerald-200 bg-emerald-50/70 text-emerald-900',
-      icon: CheckCircle2,
-      text: 'Financiamento quitado. Todas as parcelas foram pagas.',
-    };
-  }
-  if (f.paymentDay == null || f.daysToPayment == null) return null;
-  const dateLabel = f.nextPaymentDate ? formatDate(f.nextPaymentDate) : '';
-  const valueLabel = f.installmentValue > 0 ? ` · ${formatCurrency(f.installmentValue)}` : '';
-  if (f.paymentStatus === 'atrasado') {
-    return {
-      className: 'border-red-200 bg-red-50/80 text-red-800',
-      icon: AlertTriangle,
-      text: `Parcela em atraso (vencimento ${dateLabel})${valueLabel}.`,
-    };
-  }
-  if (f.paymentStatus === 'proximo') {
-    return {
-      className: 'border-amber-200 bg-amber-50/80 text-amber-900',
-      icon: Clock,
-      text: `Parcela em ${f.daysToPayment} dia${f.daysToPayment === 1 ? '' : 's'} (${dateLabel})${valueLabel}.`,
-    };
-  }
-  return {
-    className: 'border-emerald-200 bg-emerald-50/70 text-emerald-900',
-    icon: CheckCircle2,
-    text: `Próxima parcela em ${f.daysToPayment} dias (${dateLabel})${valueLabel}.`,
-  };
-}
 
 export function FinancingPanel({ carId, fillHeight = false }: { carId: string; fillHeight?: boolean }) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
   const [loading, setLoading] = useState(true);
-  const [financing, setFinancing] = useState<Financing | null>(null);
+  const [items, setItems] = useState<Financing[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState<Financing | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -105,12 +75,12 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
     try {
       setLoading(true);
       const res = await fetch(`/api/cars/${carId}/financing`);
-      if (!res.ok) throw new Error('Falha ao carregar financiamento.');
+      if (!res.ok) throw new Error('Falha ao carregar financiamentos.');
       const data = await res.json();
-      setFinancing(data.financing);
+      setItems(data.financings || []);
     } catch (err) {
       console.error(err);
-      toast('Erro ao carregar dados do financiamento.', 'error');
+      toast('Erro ao carregar dados de financiamento.', 'error');
     } finally {
       setLoading(false);
     }
@@ -121,24 +91,27 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carId]);
 
-  const openModal = () => {
-    if (financing) {
+  const openModal = (item?: Financing) => {
+    if (item) {
+      setEditing(item);
       setForm({
-        institution: financing.institution,
-        totalAmount: financing.totalAmount != null ? String(financing.totalAmount) : '',
-        downPayment: financing.downPayment != null ? String(financing.downPayment) : '',
-        installmentCount: financing.installmentCount ? String(financing.installmentCount) : '',
-        installmentValue: financing.installmentValue ? String(financing.installmentValue) : '',
-        interestRate: financing.interestRate != null ? String(financing.interestRate) : '',
-        paymentDay: financing.paymentDay != null ? String(financing.paymentDay) : '',
-        firstInstallmentDate: financing.firstInstallmentDate
-          ? String(financing.firstInstallmentDate).slice(0, 10)
+        kind: item.kind === 'Empréstimo' ? 'Empréstimo' : 'Financiamento',
+        institution: item.institution,
+        totalAmount: item.totalAmount != null ? String(item.totalAmount) : '',
+        downPayment: item.downPayment != null ? String(item.downPayment) : '',
+        installmentCount: item.installmentCount ? String(item.installmentCount) : '',
+        installmentValue: item.installmentValue ? String(item.installmentValue) : '',
+        monthlyDiscount: item.monthlyDiscount ? String(item.monthlyDiscount) : '',
+        interestRate: item.interestRate != null ? String(item.interestRate) : '',
+        paymentDay: item.paymentDay != null ? String(item.paymentDay) : '',
+        firstInstallmentDate: item.firstInstallmentDate
+          ? String(item.firstInstallmentDate).slice(0, 10)
           : '',
-        contractNumber: financing.contractNumber || '',
-        notes: financing.notes || '',
-        syncPaymentReminder: true,
+        contractNumber: item.contractNumber || '',
+        notes: item.notes || '',
       });
     } else {
+      setEditing(null);
       setForm(emptyForm);
     }
     setFormError(null);
@@ -148,41 +121,49 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.institution.trim()) {
-      setFormError('Informe o banco/financeira.');
+      setFormError('Informe o banco/financeira/pessoa.');
       return;
     }
     try {
       setSubmitting(true);
       setFormError(null);
-      const res = await fetch(`/api/cars/${carId}/financing`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          institution: form.institution.trim(),
-          totalAmount: form.totalAmount ? Number(form.totalAmount) : null,
-          downPayment: form.downPayment ? Number(form.downPayment) : null,
-          installmentCount: form.installmentCount ? Number(form.installmentCount) : 0,
-          installmentValue: form.installmentValue ? Number(form.installmentValue) : 0,
-          interestRate: form.interestRate ? Number(form.interestRate) : null,
-          paymentDay: form.paymentDay ? Number(form.paymentDay) : null,
-          firstInstallmentDate: form.firstInstallmentDate || null,
-          contractNumber: form.contractNumber || null,
-          notes: form.notes || null,
-          syncPaymentReminder: form.syncPaymentReminder,
-        }),
-      });
+      const payload = {
+        kind: form.kind,
+        institution: form.institution.trim(),
+        totalAmount: form.totalAmount ? Number(form.totalAmount) : null,
+        downPayment: form.downPayment ? Number(form.downPayment) : null,
+        installmentCount: form.installmentCount ? Number(form.installmentCount) : 0,
+        installmentValue: form.installmentValue ? Number(form.installmentValue) : 0,
+        monthlyDiscount: form.monthlyDiscount ? Number(form.monthlyDiscount) : 0,
+        interestRate: form.interestRate ? Number(form.interestRate) : null,
+        paymentDay: form.paymentDay ? Number(form.paymentDay) : null,
+        firstInstallmentDate: form.firstInstallmentDate || null,
+        contractNumber: form.contractNumber || null,
+        notes: form.notes || null,
+      };
+
+      const res = editing
+        ? await fetch(`/api/financing/${editing.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        : await fetch(`/api/cars/${carId}/financing`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Erro ao salvar financiamento.');
+        throw new Error(err.error || 'Erro ao salvar.');
       }
-      const data = await res.json();
-      setFinancing(data.financing);
-      setShowModal(false);
-      toast(
-        form.syncPaymentReminder && form.paymentDay
-          ? 'Financiamento salvo e lembrete de pagamento atualizado.'
-          : 'Financiamento salvo.'
+      const saved = await res.json();
+      setItems((prev) =>
+        editing ? prev.map((i) => (i.id === editing.id ? saved : i)) : [...prev, saved]
       );
+      setShowModal(false);
+      toast(editing ? 'Registro atualizado.' : 'Registro cadastrado.');
     } catch (err: any) {
       setFormError(err.message || 'Erro ao salvar.');
     } finally {
@@ -190,28 +171,42 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
     }
   };
 
-  const remove = async () => {
+  const remove = async (item: Financing) => {
     const ok = await confirm({
-      title: 'Excluir financiamento',
-      message: 'Tem certeza que deseja excluir os dados do financiamento deste veículo?',
+      title: `Excluir ${item.kind.toLowerCase()}`,
+      message: `Tem certeza que deseja excluir "${item.institution}"?`,
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/cars/${carId}/financing`, { method: 'DELETE' });
+      const res = await fetch(`/api/financing/${item.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erro ao excluir.');
-      setFinancing(null);
-      toast('Financiamento excluído.');
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      toast('Registro excluído.');
     } catch (err: any) {
       toast(err.message || 'Erro ao excluir.', 'error');
     }
   };
 
-  const banner = financing ? paymentBanner(financing) : null;
-  const BannerIcon = banner?.icon;
-  const progress =
-    financing && financing.installmentCount > 0
-      ? Math.round((financing.paidInstallments / financing.installmentCount) * 100)
-      : 0;
+  const setPaid = async (item: Financing, paid: boolean) => {
+    try {
+      const res = await fetch(`/api/financing/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paid }),
+      });
+      if (!res.ok) throw new Error('Erro ao atualizar.');
+      const saved = await res.json();
+      setItems((prev) => prev.map((i) => (i.id === item.id ? saved : i)));
+      toast(paid ? 'Parcela marcada como paga.' : 'Marcação de pagamento desfeita.');
+    } catch (err: any) {
+      toast(err.message || 'Erro ao atualizar.', 'error');
+    }
+  };
+
+  const totalMonthly = items.reduce(
+    (sum, i) => sum + (i.remainingInstallments > 0 ? i.installmentValue : 0),
+    0
+  );
 
   return (
     <div
@@ -222,140 +217,147 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3 shrink-0">
         <div className="flex items-center gap-2">
           <Landmark className="h-5 w-5 text-emerald-600" />
-          <h2 className="font-bold text-slate-800 text-sm">Financiamento do Veículo</h2>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {financing && (
-            <button
-              onClick={remove}
-              className="bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-600 hover:text-red-600 font-bold px-3 py-2 rounded-lg text-[12px] transition-all shadow-sm flex items-center gap-1"
-            >
-              <Trash2 className="h-4 w-4" /> Excluir
-            </button>
-          )}
-          <button
-            onClick={openModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-[12px] transition-all shadow flex items-center gap-1"
-          >
-            {financing ? (
-              <>
-                <Edit className="h-4 w-4" /> Editar
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" /> Cadastrar financiamento
-              </>
+          <div>
+            <h2 className="font-bold text-slate-800 text-sm">Financiamentos e Empréstimos</h2>
+            {items.length > 0 && totalMonthly > 0 && (
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                Parcelas ativas: <span className="text-slate-700 font-bold">{formatCurrency(totalMonthly)}/mês</span>
+              </p>
             )}
-          </button>
+          </div>
         </div>
+        <button
+          onClick={() => openModal()}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-[12px] transition-all shadow flex items-center gap-1 shrink-0"
+        >
+          <Plus className="h-4 w-4" /> Adicionar
+        </button>
       </div>
 
       {loading ? (
         <div className={`flex justify-center py-12 ${fillHeight ? 'flex-1' : ''}`}>
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         </div>
-      ) : !financing ? (
+      ) : items.length === 0 ? (
         <div className={`py-12 text-center ${fillHeight ? 'flex-1' : ''}`}>
           <Landmark className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm font-semibold mb-1">Nenhum financiamento cadastrado</p>
+          <p className="text-slate-500 text-sm font-semibold mb-1">Nenhum financiamento ou empréstimo</p>
           <p className="text-slate-400 text-xs max-w-md mx-auto leading-relaxed">
-            Cadastre banco, valor da parcela, nº de parcelas e data da 1ª parcela. As parcelas pagas
-            entram no relatório de custos e você recebe lembrete de vencimento.
+            Cadastre o financiamento do banco e também empréstimos (ex.: dinheiro que pegou para dar
+            de entrada). As parcelas pagas entram no relatório de custos.
           </p>
         </div>
       ) : (
-        <div className={`space-y-5 ${fillHeight ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 mt-4' : ''}`}>
-          {banner && BannerIcon && (
-            <div className={`flex items-start gap-3 p-3.5 border rounded-lg text-sm ${banner.className}`}>
-              <BannerIcon className="h-5 w-5 shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="font-bold text-xs uppercase tracking-wide opacity-80 mb-0.5">Lembrete de pagamento</p>
-                <p className="text-xs font-medium leading-relaxed">{banner.text}</p>
-                <Link
-                  href={`/cars/${carId}?tab=lembretes`}
-                  className="text-[11px] font-bold underline underline-offset-2 mt-1 inline-block opacity-90 hover:opacity-100"
-                >
-                  Ver na aba Lembretes
-                </Link>
+        <div className={`space-y-3 ${fillHeight ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 mt-4' : ''}`}>
+          {items.map((item) => {
+            const isLoan = item.kind === 'Empréstimo';
+            const Icon = isLoan ? HandCoins : Landmark;
+            const progress =
+              item.installmentCount > 0
+                ? Math.round((item.paidInstallments / item.installmentCount) * 100)
+                : 0;
+            return (
+              <div key={item.id} className="border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-all">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div
+                      className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
+                        isLoan ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                      }`}
+                    >
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-slate-900 truncate">{item.institution}</span>
+                        <span
+                          className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase border ${
+                            isLoan
+                              ? 'bg-amber-50 text-amber-700 border-amber-100'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                          }`}
+                        >
+                          {item.kind}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-slate-500 font-medium mt-0.5">
+                        {item.installmentValue > 0 ? formatCurrency(item.installmentValue) : '—'}
+                        {item.installmentCount > 0 && ` × ${item.installmentCount}`}
+                        {item.paymentDay != null && ` · vence dia ${item.paymentDay}`}
+                        {item.interestRate != null && ` · ${item.interestRate}% a.m.`}
+                      </p>
+                      {item.monthlyDiscount > 0 && (
+                        <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                          − {formatCurrency(item.monthlyDiscount)} ajuda · você paga{' '}
+                          {formatCurrency(item.netInstallment)}/mês
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {item.paymentDay != null && item.remainingInstallments > 0 && (
+                      item.paidThisPeriod ? (
+                        <button
+                          onClick={() => setPaid(item, false)}
+                          className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100"
+                          title="Desfazer pagamento"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Paga
+                          <Undo2 className="h-3 w-3 opacity-60" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setPaid(item, true)}
+                          className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200"
+                          title="Marcar parcela como paga"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Marcar paga
+                        </button>
+                      )
+                    )}
+                    <button
+                      onClick={() => openModal(item)}
+                      className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded-lg"
+                      title="Editar"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => remove(item)}
+                      className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded-lg"
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {item.installmentCount > 0 && (
+                  <div className="mt-3">
+                    <div className="flex items-baseline justify-between mb-1.5 text-[11px] font-semibold text-slate-500">
+                      <span>
+                        {item.paidInstallments}/{item.installmentCount} parcelas
+                        {item.remainingInstallments === 0 && (
+                          <span className="text-emerald-600 ml-1.5">· quitado</span>
+                        )}
+                      </span>
+                      <span>
+                        Pago {formatCurrency(item.paidAmount)} · Falta {formatCurrency(item.remainingAmount)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isLoan ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {item.notes && <p className="text-[11px] text-slate-400 italic mt-2">{item.notes}</p>}
               </div>
-            </div>
-          )}
-
-          {/* Dados do financiamento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50/80">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                <Building2 className="h-3 w-3" /> Instituição
-              </p>
-              <p className="text-sm font-bold text-slate-900 mt-1 truncate">{financing.institution}</p>
-              {financing.contractNumber && (
-                <p className="text-[11px] text-slate-500 mt-0.5">Contrato: {financing.contractNumber}</p>
-              )}
-            </div>
-            <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50/80">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                <Banknote className="h-3 w-3" /> Parcela
-              </p>
-              <p className="text-sm font-bold text-slate-900 mt-1">
-                {financing.installmentValue > 0 ? formatCurrency(financing.installmentValue) : '—'}
-              </p>
-              {financing.paymentDay != null && (
-                <p className="text-[11px] text-slate-500 mt-0.5">Todo dia {financing.paymentDay}</p>
-              )}
-            </div>
-            <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50/80">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                <FileText className="h-3 w-3" /> Valor financiado
-              </p>
-              <p className="text-sm font-bold text-slate-900 mt-1">
-                {financing.totalAmount != null ? formatCurrency(financing.totalAmount) : '—'}
-              </p>
-              {financing.downPayment != null && (
-                <p className="text-[11px] text-slate-500 mt-0.5">Entrada: {formatCurrency(financing.downPayment)}</p>
-              )}
-            </div>
-            <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50/80">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                <Percent className="h-3 w-3" /> Taxa de juros
-              </p>
-              <p className="text-sm font-bold text-slate-900 mt-1">
-                {financing.interestRate != null ? `${financing.interestRate}% a.m.` : '—'}
-              </p>
-              {financing.firstInstallmentDate && (
-                <p className="text-[11px] text-slate-500 mt-0.5">1ª: {formatDate(financing.firstInstallmentDate)}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Progresso das parcelas */}
-          <div className="p-4 rounded-lg border border-slate-100 bg-slate-50/60">
-            <div className="flex items-baseline justify-between mb-2">
-              <h3 className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-[0.15em]">
-                Progresso — {financing.paidInstallments}/{financing.installmentCount} parcelas
-              </h3>
-              <span className="text-xs font-bold text-emerald-700">{progress}%</span>
-            </div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-xs">
-              <span className="text-slate-500">
-                Pago: <strong className="text-slate-800">{formatCurrency(financing.paidAmount)}</strong>
-              </span>
-              <span className="text-slate-500">
-                Restante:{' '}
-                <strong className="text-slate-800">
-                  {formatCurrency(financing.remainingAmount)} ({financing.remainingInstallments}x)
-                </strong>
-              </span>
-            </div>
-          </div>
-
-          {financing.notes && (
-            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg p-3 leading-relaxed">
-              {financing.notes}
-            </p>
-          )}
+            );
+          })}
         </div>
       )}
 
@@ -371,7 +373,7 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
           >
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-slate-900 text-base">
-                {financing ? 'Editar financiamento' : 'Cadastrar financiamento'}
+                {editing ? 'Editar registro' : 'Adicionar financiamento / empréstimo'}
               </h3>
               <button onClick={() => setShowModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400">
                 <X className="h-5 w-5" />
@@ -379,15 +381,31 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
             </div>
 
             <form onSubmit={save} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">Banco / Financeira *</label>
-                <input
-                  required
-                  value={form.institution}
-                  onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))}
-                  placeholder="Ex: Banco do Brasil, Santander..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:border-blue-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-600 mb-1.5">Tipo *</label>
+                  <select
+                    value={form.kind}
+                    onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value as (typeof KINDS)[number] }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-2.5 text-sm font-bold focus:outline-none focus:border-blue-500"
+                  >
+                    {KINDS.map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600 mb-1.5">
+                    {form.kind === 'Empréstimo' ? 'Pessoa / credor *' : 'Banco / financeira *'}
+                  </label>
+                  <input
+                    required
+                    value={form.institution}
+                    onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))}
+                    placeholder={form.kind === 'Empréstimo' ? 'Ex: João (entrada)' : 'Ex: Santander'}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -399,7 +417,7 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
                     step="any"
                     value={form.installmentValue}
                     onChange={(e) => setForm((f) => ({ ...f, installmentValue: e.target.value }))}
-                    placeholder="Ex: 1250.00"
+                    placeholder="Ex: 500.00"
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -411,15 +429,34 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
                     max="600"
                     value={form.installmentCount}
                     onChange={(e) => setForm((f) => ({ ...f, installmentCount: e.target.value }))}
-                    placeholder="Ex: 48"
+                    placeholder="Ex: 24"
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
 
+              <div>
+                <label className="block font-bold text-slate-600 mb-1.5">Ajuda / desconto mensal (R$)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.monthlyDiscount}
+                  onChange={(e) => setForm((f) => ({ ...f, monthlyDiscount: e.target.value }))}
+                  placeholder="Ex: 500.00 (quanto alguém abate da parcela)"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-blue-500"
+                />
+                {form.installmentValue && form.monthlyDiscount && (
+                  <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                    Você paga {formatCurrency(Math.max(0, Number(form.installmentValue) - Number(form.monthlyDiscount)))}/mês
+                    no relatório.
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">Valor financiado (R$)</label>
+                  <label className="block font-bold text-slate-600 mb-1.5">Valor total (R$)</label>
                   <input
                     type="number"
                     min="0"
@@ -482,7 +519,9 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 mb-1.5">Nº do contrato</label>
+                <label className="block font-bold text-slate-600 mb-1.5">
+                  {form.kind === 'Empréstimo' ? 'Referência' : 'Nº do contrato'}
+                </label>
                 <input
                   value={form.contractNumber}
                   onChange={(e) => setForm((f) => ({ ...f, contractNumber: e.target.value }))}
@@ -499,21 +538,6 @@ export function FinancingPanel({ carId, fillHeight = false }: { carId: string; f
                   className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"
                 />
               </div>
-
-              <label className="flex items-start gap-2.5 p-3 rounded-md border border-slate-200 bg-slate-50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
-                  checked={form.syncPaymentReminder}
-                  onChange={(e) => setForm((f) => ({ ...f, syncPaymentReminder: e.target.checked }))}
-                />
-                <span>
-                  <span className="font-bold text-slate-800 block">Criar lembrete de pagamento</span>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Atualiza o lembrete mensal &quot;Financiamento&quot; na aba Lembretes (usa o dia de vencimento).
-                  </span>
-                </span>
-              </label>
 
               {formError && (
                 <div className="p-3 bg-red-50 text-red-700 border border-red-100 rounded-md text-xs">{formError}</div>
