@@ -14,6 +14,9 @@ export interface DashboardData {
     totalMaintenanceCost: number;
     totalFuelCost: number;
     totalWashCost: number;
+    totalInsuranceCost: number;
+    monthlyInsurancePremium: number;
+    totalInsuranceClaims: number;
     totalCarCost: number;
     latestMaintenance: {
       date: Date;
@@ -40,6 +43,7 @@ export interface DashboardData {
       maintenance: number;
       fuel: number;
       wash: number;
+      insurance: number;
       total: number;
     }[];
     expensesByType: {
@@ -53,10 +57,10 @@ export interface DashboardData {
   };
 }
 
-type MonthBucket = { maintenance: number; fuel: number; wash: number };
+type MonthBucket = { maintenance: number; fuel: number; wash: number; insurance: number };
 
 function emptyMonthBucket(): MonthBucket {
-  return { maintenance: 0, fuel: 0, wash: 0 };
+  return { maintenance: 0, fuel: 0, wash: 0, insurance: 0 };
 }
 
 function ensureMonth(map: Record<string, MonthBucket>, monthYear: string): MonthBucket {
@@ -68,6 +72,22 @@ function ensureMonth(map: Record<string, MonthBucket>, monthYear: string): Month
 
 function monthYearFromDate(date: Date): string {
   return `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${date.getUTCFullYear()}`;
+}
+
+function monthYearLocal(date: Date): string {
+  return `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+}
+
+/** Lista chaves MM/AAAA de start..end (inclusive), por mês civil local. */
+function eachMonthKey(start: Date, end: Date): string[] {
+  const keys: string[] = [];
+  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cur.getTime() <= last.getTime()) {
+    keys.push(monthYearLocal(cur));
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return keys;
 }
 
 export class DashboardService {
@@ -95,10 +115,46 @@ export class DashboardService {
       orderBy: { date: 'asc' },
     });
 
+    const insurancePolicy = await prisma.insurancePolicy.findUnique({
+      where: { carId },
+    });
+
+    const insuranceClaims = await prisma.insuranceClaim.findMany({
+      where: { carId },
+      orderBy: { date: 'asc' },
+    });
+
     const totalMaintenanceCost = maintenances.reduce((sum, m) => sum + m.totalCost, 0);
     const totalFuelCost = fuelRecords.reduce((sum, f) => sum + f.totalPrice, 0);
     const totalWashCost = washRecords.reduce((sum, w) => sum + (w.price || 0), 0);
-    const totalCarCost = totalMaintenanceCost + totalFuelCost + totalWashCost;
+
+    const monthlyInsurancePremium = insurancePolicy?.monthlyValue ?? 0;
+    const totalInsuranceClaims = insuranceClaims.reduce((sum, c) => {
+      // prioriza valor do evento; se não houver, conta franquia paga
+      if (c.amount != null && c.amount > 0) return sum + c.amount;
+      if (c.deductible != null && c.deductible > 0) return sum + c.deductible;
+      return sum;
+    }, 0);
+
+    // Prêmios mensais acumulados desde o início da vigência (ou criação da apólice) até agora
+    let totalInsurancePremiums = 0;
+    const now = new Date();
+    if (insurancePolicy && monthlyInsurancePremium > 0) {
+      const start =
+        insurancePolicy.startDate ||
+        insurancePolicy.createdAt ||
+        now;
+      const end = insurancePolicy.endDate && insurancePolicy.endDate < now
+        ? insurancePolicy.endDate
+        : now;
+      if (end >= start) {
+        const months = eachMonthKey(start, end);
+        totalInsurancePremiums = months.length * monthlyInsurancePremium;
+      }
+    }
+
+    const totalInsuranceCost = totalInsurancePremiums + totalInsuranceClaims;
+    const totalCarCost = totalMaintenanceCost + totalFuelCost + totalWashCost + totalInsuranceCost;
 
     const latestMaintenance = maintenances.length > 0
       ? {
@@ -196,13 +252,39 @@ export class DashboardService {
       ensureMonth(expensesByMonthMap, monthYearFromDate(w.date)).wash += w.price;
     });
 
+    // Seguro: prêmio mensal em cada mês da vigência + claims no mês do evento
+    if (insurancePolicy && monthlyInsurancePremium > 0) {
+      const start = insurancePolicy.startDate || insurancePolicy.createdAt;
+      const end =
+        insurancePolicy.endDate && insurancePolicy.endDate < now
+          ? insurancePolicy.endDate
+          : now;
+      if (end >= start) {
+        for (const key of eachMonthKey(start, end)) {
+          ensureMonth(expensesByMonthMap, key).insurance += monthlyInsurancePremium;
+        }
+      }
+    }
+
+    insuranceClaims.forEach((c) => {
+      const claimCost =
+        c.amount != null && c.amount > 0
+          ? c.amount
+          : c.deductible != null && c.deductible > 0
+            ? c.deductible
+            : 0;
+      if (claimCost <= 0) return;
+      ensureMonth(expensesByMonthMap, monthYearFromDate(c.date)).insurance += claimCost;
+    });
+
     const monthlyExpenses = Object.entries(expensesByMonthMap)
       .map(([month, data]) => ({
         month,
         maintenance: Number(data.maintenance.toFixed(2)),
         fuel: Number(data.fuel.toFixed(2)),
         wash: Number(data.wash.toFixed(2)),
-        total: Number((data.maintenance + data.fuel + data.wash).toFixed(2)),
+        insurance: Number(data.insurance.toFixed(2)),
+        total: Number((data.maintenance + data.fuel + data.wash + data.insurance).toFixed(2)),
       }))
       .sort((a, b) => {
         const [monthA, yearA] = a.month.split('/').map(Number);
@@ -214,6 +296,9 @@ export class DashboardService {
     maintenances.forEach((m) => {
       expensesByTypeMap[m.type] = (expensesByTypeMap[m.type] || 0) + m.totalCost;
     });
+    if (totalInsuranceCost > 0) {
+      expensesByTypeMap['Seguro'] = Number(totalInsuranceCost.toFixed(2));
+    }
 
     const expensesByType = Object.entries(expensesByTypeMap).map(([type, value]) => ({
       type,
@@ -244,6 +329,9 @@ export class DashboardService {
         totalMaintenanceCost: Number(totalMaintenanceCost.toFixed(2)),
         totalFuelCost: Number(totalFuelCost.toFixed(2)),
         totalWashCost: Number(totalWashCost.toFixed(2)),
+        totalInsuranceCost: Number(totalInsuranceCost.toFixed(2)),
+        monthlyInsurancePremium: Number(monthlyInsurancePremium.toFixed(2)),
+        totalInsuranceClaims: Number(totalInsuranceClaims.toFixed(2)),
         totalCarCost: Number(totalCarCost.toFixed(2)),
         latestMaintenance,
         latestFuelRecord,

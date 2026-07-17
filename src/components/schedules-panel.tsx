@@ -32,6 +32,7 @@ const SCHEDULE_TYPES = [
   'Alinhamento e balanceamento',
   'Calibragem de pneu',
   'Lavagem',
+  'Seguro',
   'Corretiva',
   'Outro',
 ];

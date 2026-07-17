@@ -42,6 +42,8 @@ model Car {
   schedules       MaintenanceSchedule[]
   trips           Trip[]
   washRecords     WashRecord[]
+  insurancePolicy InsurancePolicy?
+  insuranceClaims InsuranceClaim[]
 }
 
 model Maintenance {
@@ -182,4 +184,44 @@ model WashRecord {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+// Apólice / dados do seguro do veículo (1 por carro)
+model InsurancePolicy {
+  id             String   @id @default(uuid())
+  carId          String   @unique
+  companyName    String
+  policyNumber   String?
+  coverageType   String?  // Completo, Terceiros, etc.
+  monthlyValue   Float    @default(0)
+  paymentDay     Int?     // dia do mês do pagamento (1-31)
+  startDate      DateTime?
+  endDate        DateTime?
+  brokerName     String?
+  notes          String?
+  // JSON: [{ "label": "Sinistros 24h", "phone": "0800..." }]
+  usefulContacts String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  car            Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  claims         InsuranceClaim[]
+}
+
+// Utilização do seguro (sinistro, guincho, etc.)
+model InsuranceClaim {
+  id          String          @id @default(uuid())
+  policyId    String
+  carId       String
+  date        DateTime
+  type        String          // Sinistro, Assistência 24h, Guincho, Vidro, Colisão, Outro
+  description String
+  amount      Float?
+  deductible  Float?          // franquia
+  status      String          @default("Aberto") // Aberto | Em análise | Concluído | Negado
+  protocol    String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  policy      InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  car         Car             @relation(fields: [carId], references: [id], onDelete: Cascade)
 }

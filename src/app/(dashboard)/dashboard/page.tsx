@@ -44,6 +44,9 @@ interface DashboardData {
     totalMaintenanceCost: number;
     totalFuelCost: number;
     totalWashCost: number;
+    totalInsuranceCost: number;
+    monthlyInsurancePremium: number;
+    totalInsuranceClaims: number;
     totalCarCost: number;
     latestMaintenance: {
       date: string;
@@ -70,6 +73,7 @@ interface DashboardData {
       maintenance: number;
       fuel: number;
       wash: number;
+      insurance: number;
       total: number;
     }[];
     expensesByType: {
@@ -88,6 +92,7 @@ const SERIES = {
   maintenance: '#2a78d6', // azul — manutenção
   fuel: '#1baf7a', // aqua — combustível
   wash: '#0891b2', // cyan — lavagens
+  insurance: '#6366f1', // indigo — seguro
 };
 
 const AXIS_TICK = { fontSize: 11, fill: '#898781' };
@@ -265,9 +270,15 @@ export default function DashboardPage() {
             <Coins className="h-3.5 w-3.5 text-slate-300" />
           </div>
           <p className="text-2xl font-bold text-slate-900 tracking-tight">{formatCurrency(metrics.totalCarCost)}</p>
-          <p className="text-xxs text-slate-400 mt-1.5">
-            manut. {formatCurrency(metrics.totalMaintenanceCost)} · comb. {formatCurrency(metrics.totalFuelCost)} · lav. {formatCurrency(metrics.totalWashCost ?? 0)}
+          <p className="text-xxs text-slate-400 mt-1.5 leading-relaxed">
+            manut. {formatCurrency(metrics.totalMaintenanceCost)} · comb. {formatCurrency(metrics.totalFuelCost)} · lav.{' '}
+            {formatCurrency(metrics.totalWashCost ?? 0)} · seg. {formatCurrency(metrics.totalInsuranceCost ?? 0)}
           </p>
+          {(metrics.monthlyInsurancePremium ?? 0) > 0 && (
+            <p className="text-[10px] text-indigo-600/80 font-semibold mt-1">
+              prêmio mensal {formatCurrency(metrics.monthlyInsurancePremium)}
+            </p>
+          )}
         </div>
 
         {/* Card 2: Quilometragem */}
@@ -423,6 +434,10 @@ export default function DashboardPage() {
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SERIES.wash }} />
                     Lavagens
                   </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SERIES.insurance }} />
+                    Seguro
+                  </span>
                 </div>
               </div>
               <div className="flex-1 min-h-0">
@@ -440,9 +455,10 @@ export default function DashboardPage() {
                       cursor={{ fill: 'rgba(15, 23, 42, 0.04)' }}
                       content={<ChartTooltip formatter={(v) => formatCurrency(v)} />}
                     />
-                    <Bar name="Combustível" dataKey="fuel" fill={SERIES.fuel} radius={[3, 3, 0, 0]} maxBarSize={14} />
-                    <Bar name="Manutenção" dataKey="maintenance" fill={SERIES.maintenance} radius={[3, 3, 0, 0]} maxBarSize={14} />
-                    <Bar name="Lavagens" dataKey="wash" fill={SERIES.wash} radius={[3, 3, 0, 0]} maxBarSize={14} />
+                    <Bar name="Combustível" dataKey="fuel" fill={SERIES.fuel} radius={[3, 3, 0, 0]} maxBarSize={12} />
+                    <Bar name="Manutenção" dataKey="maintenance" fill={SERIES.maintenance} radius={[3, 3, 0, 0]} maxBarSize={12} />
+                    <Bar name="Lavagens" dataKey="wash" fill={SERIES.wash} radius={[3, 3, 0, 0]} maxBarSize={12} />
+                    <Bar name="Seguro" dataKey="insurance" fill={SERIES.insurance} radius={[3, 3, 0, 0]} maxBarSize={12} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

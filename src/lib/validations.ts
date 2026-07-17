@@ -146,6 +146,7 @@ export const MaintenanceScheduleSchema = z
         'Alinhamento e balanceamento',
         'Calibragem de pneu',
         'Lavagem',
+        'Seguro',
         'Outro',
       ],
       { message: 'Tipo de lembrete inválido' }
@@ -236,3 +237,48 @@ export const WashRecordUpdateSchema = WashRecordBaseSchema.partial().refine(
   },
   { message: 'Informe o lava-jato quando não for lavagem própria', path: ['carWashName'] }
 );
+
+const InsuranceContactSchema = z.object({
+  label: z.string().min(1, 'Informe o nome do contato').max(80),
+  phone: z.string().min(1, 'Informe o telefone').max(40),
+});
+
+// Apólice / dados do seguro
+export const InsurancePolicySchema = z.object({
+  companyName: z.string().min(1, 'Informe a seguradora').max(120),
+  policyNumber: z.string().max(60).optional().nullable().or(z.literal('')),
+  coverageType: z
+    .enum(['Completo', 'Terceiros', 'Compreensivo', 'Outro'])
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  monthlyValue: z.coerce.number().min(0, 'O valor mensal não pode ser negativo').optional().nullable(),
+  paymentDay: z.coerce
+    .number()
+    .int()
+    .min(1, 'Dia inválido')
+    .max(31, 'Dia inválido')
+    .optional()
+    .nullable(),
+  startDate: z.string().optional().nullable().or(z.literal('')),
+  endDate: z.string().optional().nullable().or(z.literal('')),
+  brokerName: z.string().max(120).optional().nullable().or(z.literal('')),
+  notes: z.string().max(2000).optional().nullable().or(z.literal('')),
+  usefulContacts: z.array(InsuranceContactSchema).max(10).optional().default([]),
+  // se true, cria/atualiza lembrete mensal "Seguro" na aba Lembretes
+  syncPaymentReminder: z.boolean().optional().default(true),
+});
+
+// Utilização do seguro
+export const InsuranceClaimSchema = z.object({
+  date: z.string().min(1, 'A data é obrigatória'),
+  type: z.enum(['Sinistro', 'Assistência 24h', 'Guincho', 'Vidro', 'Colisão', 'Outro'], {
+    message: 'Tipo inválido',
+  }),
+  description: z.string().min(1, 'A descrição é obrigatória').max(500),
+  amount: z.coerce.number().min(0).optional().nullable(),
+  deductible: z.coerce.number().min(0).optional().nullable(),
+  status: z.enum(['Aberto', 'Em análise', 'Concluído', 'Negado']).default('Aberto'),
+  protocol: z.string().max(80).optional().nullable().or(z.literal('')),
+  notes: z.string().max(1000).optional().nullable().or(z.literal('')),
+});

@@ -23,18 +23,20 @@ import {
   ListTodo,
   Droplets,
   BellRing,
+  Shield,
   type LucideIcon,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'rodanexo_sidebar_collapsed';
 const SIDEBAR_TRANSITION = 'duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]';
 
-type CarTab = 'historico' | 'upgrades' | 'lavadas' | 'lembretes';
+type CarTab = 'historico' | 'upgrades' | 'lavadas' | 'seguro' | 'lembretes';
 
 const CAR_TABS: { id: CarTab; name: string; icon: LucideIcon }[] = [
   { id: 'historico', name: 'Histórico Geral', icon: BookOpen },
   { id: 'upgrades', name: 'Melhorias', icon: ListTodo },
   { id: 'lavadas', name: 'Lavadas', icon: Droplets },
+  { id: 'seguro', name: 'Seguro', icon: Shield },
   { id: 'lembretes', name: 'Lembretes', icon: BellRing },
 ];
 

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Droplets,
   User,
+  Shield,
 } from 'lucide-react';
 
 interface MaintenancePartLog {
@@ -69,11 +70,45 @@ interface WashLog {
   notes: string | null;
 }
 
+interface InsurancePolicyLog {
+  companyName: string;
+  monthlyValue: number;
+  paymentDay: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt?: string;
+}
+
+interface InsuranceClaimLog {
+  id: string;
+  date: string;
+  type: string;
+  description: string;
+  amount: number | null;
+  deductible: number | null;
+  status: string;
+  protocol: string | null;
+}
+
+/** Meses civis inclusivos entre start e end (datas como Date). */
+function countMonthsInRange(start: Date, end: Date): number {
+  if (end < start) return 0;
+  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+}
+
+function claimCost(c: InsuranceClaimLog): number {
+  if (c.amount != null && c.amount > 0) return c.amount;
+  if (c.deductible != null && c.deductible > 0) return c.deductible;
+  return 0;
+}
+
 export default function ReportsPage() {
   const { selectedCarId, selectedCar, loading: carLoading } = useCar();
   const [maintenances, setMaintenances] = useState<MaintenanceLog[]>([]);
   const [fuelRecords, setFuelRecords] = useState<FuelLog[]>([]);
   const [washRecords, setWashRecords] = useState<WashLog[]>([]);
+  const [insurancePolicy, setInsurancePolicy] = useState<InsurancePolicyLog | null>(null);
+  const [insuranceClaims, setInsuranceClaims] = useState<InsuranceClaimLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,9 +158,14 @@ export default function ReportsPage() {
       const washRes = await fetch(`/api/cars/${selectedCarId}/wash-records?${washParams.toString()}`);
       const washData = washRes.ok ? await washRes.json() : [];
 
+      const insRes = await fetch(`/api/cars/${selectedCarId}/insurance`);
+      const insData = insRes.ok ? await insRes.json() : { policy: null, claims: [] };
+
       setMaintenances(maintData);
       setFuelRecords(fuelData);
       setWashRecords(washData);
+      setInsurancePolicy(insData.policy || null);
+      setInsuranceClaims(insData.claims || []);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar dados dos relatórios.');
@@ -142,7 +182,41 @@ export default function ReportsPage() {
   const totalMaintCost = maintenances.reduce((sum, m) => sum + m.totalCost, 0);
   const totalFuelCost = fuelRecords.reduce((sum, f) => sum + f.totalPrice, 0);
   const totalWashCost = washRecords.reduce((sum, w) => sum + (w.price || 0), 0);
-  const totalSpent = totalMaintCost + totalFuelCost + totalWashCost;
+
+  // Seguro no período filtrado (prêmios mensais + utilizações)
+  const filterStart = startDate ? new Date(startDate + 'T00:00:00') : null;
+  const filterEnd = endDate ? new Date(endDate + 'T23:59:59') : null;
+
+  const filteredClaims = insuranceClaims.filter((c) => {
+    const d = new Date(c.date);
+    if (filterStart && d < filterStart) return false;
+    if (filterEnd && d > filterEnd) return false;
+    return true;
+  });
+
+  const totalInsuranceClaims = filteredClaims.reduce((sum, c) => sum + claimCost(c), 0);
+
+  let totalInsurancePremiums = 0;
+  const monthlyPremium = insurancePolicy?.monthlyValue ?? 0;
+  if (insurancePolicy && monthlyPremium > 0) {
+    const policyStart = new Date(
+      insurancePolicy.startDate || insurancePolicy.createdAt || new Date().toISOString()
+    );
+    const policyEnd = insurancePolicy.endDate
+      ? new Date(insurancePolicy.endDate)
+      : new Date();
+    const rangeStart = filterStart && filterStart > policyStart ? filterStart : policyStart;
+    const rangeEnd = filterEnd && filterEnd < policyEnd ? filterEnd : policyEnd;
+    // se não há filtro de data, conta da vigência até hoje
+    const endBound = filterEnd ? rangeEnd : new Date(Math.min(policyEnd.getTime(), Date.now()));
+    const startBound = filterStart ? rangeStart : policyStart;
+    if (endBound >= startBound) {
+      totalInsurancePremiums = countMonthsInRange(startBound, endBound) * monthlyPremium;
+    }
+  }
+
+  const totalInsuranceCost = totalInsurancePremiums + totalInsuranceClaims;
+  const totalSpent = totalMaintCost + totalFuelCost + totalWashCost + totalInsuranceCost;
 
   const validConsumptions = fuelRecords
     .map(f => f.consumptionKmPerLiter)
@@ -348,6 +422,7 @@ export default function ReportsPage() {
                 <span>Manut: {formatCurrency(totalMaintCost)}</span>
                 <span>Comb: {formatCurrency(totalFuelCost)}</span>
                 <span>Lav: {formatCurrency(totalWashCost)}</span>
+                <span>Seg: {formatCurrency(totalInsuranceCost)}</span>
               </>
             )}
           </div>
@@ -683,6 +758,112 @@ export default function ReportsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+
+        {/* Seguro */}
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3.5 mb-4 gap-2">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4.5 w-4.5 text-indigo-600" />
+              <h2 className="font-bold text-slate-800 text-sm">Seguro no período</h2>
+            </div>
+            {!loading && (
+              <div className="text-xxs text-slate-500 font-semibold flex flex-wrap gap-x-3">
+                <span>
+                  Prêmios:{' '}
+                  <strong className="text-slate-800">{formatCurrency(totalInsurancePremiums)}</strong>
+                  {monthlyPremium > 0 && (
+                    <span className="text-slate-400 font-medium">
+                      {' '}
+                      ({formatCurrency(monthlyPremium)}/mês)
+                    </span>
+                  )}
+                </span>
+                <span>
+                  Utilizações:{' '}
+                  <strong className="text-slate-800">{formatCurrency(totalInsuranceClaims)}</strong>
+                </span>
+                <span>
+                  Total:{' '}
+                  <strong className="text-indigo-700">{formatCurrency(totalInsuranceCost)}</strong>
+                </span>
+              </div>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="h-16 bg-slate-50 rounded animate-pulse" />
+          ) : !insurancePolicy ? (
+            <p className="text-slate-400 italic text-xs py-4 text-center">
+              Nenhum seguro cadastrado para este veículo.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-3 rounded-lg bg-indigo-50/50 border border-indigo-100">
+                  <p className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Seguradora</p>
+                  <p className="font-bold text-slate-900 mt-1">{insurancePolicy.companyName}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Mensalidade</p>
+                  <p className="font-bold text-slate-900 mt-1">
+                    {monthlyPremium > 0 ? formatCurrency(monthlyPremium) : '—'}
+                    {insurancePolicy.paymentDay != null && (
+                      <span className="text-slate-400 font-medium text-[11px]"> · dia {insurancePolicy.paymentDay}</span>
+                    )}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Prêmios no filtro</p>
+                  <p className="font-bold text-slate-900 mt-1">{formatCurrency(totalInsurancePremiums)}</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-[0.15em] mb-2">
+                  Utilizações no período ({filteredClaims.length})
+                </h3>
+                {filteredClaims.length === 0 ? (
+                  <p className="text-slate-400 italic text-xs py-3 text-center border border-dashed border-slate-200 rounded-lg">
+                    Nenhuma utilização no período filtrado.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-xxs tracking-wider">
+                          <th className="pb-3 pr-4">Data</th>
+                          <th className="pb-3 pr-4">Tipo</th>
+                          <th className="pb-3 pr-4">Descrição</th>
+                          <th className="pb-3 pr-4">Status</th>
+                          <th className="pb-3 pr-4">Protocolo</th>
+                          <th className="pb-3 text-right">Custo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {filteredClaims.map((c) => (
+                          <tr key={c.id}>
+                            <td className="py-3 pr-4 font-semibold text-slate-500">{formatDate(c.date)}</td>
+                            <td className="py-3 pr-4 font-bold text-slate-900">{c.type}</td>
+                            <td className="py-3 pr-4 text-slate-600 max-w-[220px] truncate">{c.description}</td>
+                            <td className="py-3 pr-4">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase text-xxs font-bold">
+                                {c.status}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4 text-slate-500">{c.protocol || '—'}</td>
+                            <td className="py-3 text-right font-extrabold text-slate-950">
+                              {claimCost(c) > 0 ? formatCurrency(claimCost(c)) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
