@@ -30,10 +30,13 @@ export async function sendReminderEmail(
     <p style="color:#64748b;font-size:12px">Enviado automaticamente pelo AutoCare.</p>
   `;
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: FROM,
     to,
     subject: `AutoCare · ${due.length} lembrete(s) para ${carLabel}`,
     html,
   });
+
+  // Resend não lança em falha de API — retorna { error }. Propaga pra virar erro real.
+  if (error) throw new Error(`Resend: ${error.message}`);
 }
