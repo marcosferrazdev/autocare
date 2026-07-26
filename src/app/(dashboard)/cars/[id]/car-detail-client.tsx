@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency, formatMileage, formatDate, formatConsumption } from '@/lib/formatters';
 import { MAX_PHOTOS, parsePhotos } from '@/lib/photos';
 import { PhotoPicker, PhotoThumb, makeThumb } from '@/components/photo-picker';
 import dynamic from 'next/dynamic';
+import { PanelSkeleton } from '@/components/ui/panel-skeleton';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
@@ -39,21 +40,26 @@ import {
 
 const WASH_TYPES = ['Completa', 'Externa', 'Interna', 'Motor', 'Detalhamento', 'Outro'] as const;
 
-// Painéis de aba: só descem quando a aba é aberta.
-const panelFallback = () => (
-  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 h-full animate-pulse" />
-);
+type CarTab = 'historico' | 'upgrades' | 'lembretes' | 'lavadas' | 'seguro' | 'financiamento';
+
+const CAR_TABS: CarTab[] = ['historico', 'upgrades', 'lembretes', 'lavadas', 'seguro', 'financiamento'];
+
+function parseTab(value: string | null): CarTab {
+  return CAR_TABS.includes(value as CarTab) ? (value as CarTab) : 'historico';
+}
+
+// Painéis de aba: só descem quando a aba é aberta, com esqueleto enquanto isso.
 const SchedulesPanel = dynamic(
   () => import('@/components/schedules-panel').then((m) => m.SchedulesPanel),
-  { loading: panelFallback }
+  { loading: () => <PanelSkeleton rows={4} /> }
 );
 const InsurancePanel = dynamic(
   () => import('@/components/insurance-panel').then((m) => m.InsurancePanel),
-  { loading: panelFallback }
+  { loading: () => <PanelSkeleton rows={3} /> }
 );
 const FinancingPanel = dynamic(
   () => import('@/components/financing-panel').then((m) => m.FinancingPanel),
-  { loading: panelFallback }
+  { loading: () => <PanelSkeleton rows={2} /> }
 );
 
 /** Busca as fotos cheias de um registro; as listagens só trazem a miniatura. */
@@ -191,7 +197,6 @@ export interface CarDetailInitialData {
 
 export default function CarDetailClient({ initial }: { initial: CarDetailInitialData }) {
   const { id } = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -207,26 +212,21 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
   const [editingWebInfo, setEditingWebInfo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Aba ativa sincronizada com ?tab= (sidenav e deep-link)
-  type CarTab = 'historico' | 'upgrades' | 'lembretes' | 'lavadas' | 'seguro' | 'financiamento';
+  // Aba ativa: estado local, espelhado na URL para deep-link e sidenav.
+  // Trocar aba não passa pelo servidor — os dados da página são os mesmos.
   const tabFromUrl = searchParams.get('tab');
-  const activeTab: CarTab =
-    tabFromUrl === 'lembretes' ||
-    tabFromUrl === 'upgrades' ||
-    tabFromUrl === 'lavadas' ||
-    tabFromUrl === 'seguro' ||
-    tabFromUrl === 'financiamento' ||
-    tabFromUrl === 'historico'
-      ? tabFromUrl
-      : 'historico';
+  const [activeTab, setActiveTabState] = useState<CarTab>(() => parseTab(tabFromUrl));
+
+  // URL manda quando vem de fora: link da sidenav, deep-link, botão voltar
+  useEffect(() => {
+    setActiveTabState(parseTab(tabFromUrl));
+  }, [tabFromUrl]);
 
   const setActiveTab = (tab: CarTab) => {
-    const base = `/cars/${id}`;
-    if (tab === 'historico') {
-      router.replace(base, { scroll: false });
-    } else {
-      router.replace(`${base}?tab=${tab}`, { scroll: false });
-    }
+    setActiveTabState(tab);
+    const url = tab === 'historico' ? `/cars/${id}` : `/cars/${id}?tab=${tab}`;
+    // history nativo: atualiza a barra de endereços sem refazer o render do servidor
+    window.history.replaceState(null, '', url);
   };
   const [sortBy, setSortBy] = useState<'recent' | 'priority' | 'price-asc' | 'price-desc' | 'alphabetical'>('recent');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);

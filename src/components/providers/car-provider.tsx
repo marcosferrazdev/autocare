@@ -29,6 +29,23 @@ interface CarContextType {
 
 const CarContext = createContext<CarContextType | undefined>(undefined);
 
+// Cookie (e não só localStorage) porque o servidor precisa ler a seleção para
+// renderizar dashboard e relatórios já com os dados do carro certo.
+export const SELECTED_CAR_COOKIE = 'autocare_car_id';
+
+function readCarCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${SELECTED_CAR_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function writeCarCookie(id: string | null) {
+  if (typeof document === 'undefined') return;
+  document.cookie = id
+    ? `${SELECTED_CAR_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`
+    : `${SELECTED_CAR_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
 export function CarProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [cars, setCars] = useState<Car[]>([]);
@@ -51,17 +68,16 @@ export function CarProvider({ children }: { children: React.ReactNode }) {
 
         // Se houver carros cadastrados e nenhum selecionado, seleciona o primeiro
         if (data.length > 0) {
-          const cached = localStorage.getItem('autocare_selected_car_id');
+          const cached = readCarCookie() || localStorage.getItem('autocare_selected_car_id');
           const stillExists = cached && data.some((c: Car) => c.id === cached);
-          
-          if (stillExists) {
-            setSelectedCarIdState(cached);
-          } else {
-            setSelectedCarIdState(data[0].id);
-            localStorage.setItem('autocare_selected_car_id', data[0].id);
-          }
+          const chosen = stillExists ? cached : data[0].id;
+
+          setSelectedCarIdState(chosen);
+          localStorage.setItem('autocare_selected_car_id', chosen);
+          writeCarCookie(chosen);
         } else {
           setSelectedCarIdState(null);
+          writeCarCookie(null);
         }
       }
     } catch (error) {
@@ -73,6 +89,7 @@ export function CarProvider({ children }: { children: React.ReactNode }) {
 
   const setSelectedCarId = (id: string | null) => {
     setSelectedCarIdState(id);
+    writeCarCookie(id);
     if (id) {
       localStorage.setItem('autocare_selected_car_id', id);
     } else {

@@ -139,9 +139,6 @@ export class FinancingService {
 
   /** Cria/atualiza (ou remove) o lembrete mensal de pagamento da dívida. */
   private static async syncSchedule(carId: string, f: FinancingRecord) {
-    // limpa lembrete genérico legado do v1 (type exato "Financiamento")
-    await prisma.maintenanceSchedule.deleteMany({ where: { carId, type: 'Financiamento' } });
-
     const type = scheduleType(f);
     const paid = paidInstallments(f.firstInstallmentDate, f.installmentCount);
     const remaining = Math.max(0, f.installmentCount - paid);
@@ -188,15 +185,18 @@ export class FinancingService {
       where: { carId },
       orderBy: { createdAt: 'asc' },
     });
-    for (const f of items) {
-      await this.syncSchedule(carId, f);
-    }
+
+    // Limpeza do lembrete legado do v1: depende só do carId, então uma vez basta
+    // (antes rodava a cada financiamento). Os syncs vão em paralelo.
+    await prisma.maintenanceSchedule.deleteMany({ where: { carId, type: 'Financiamento' } });
+    await Promise.all(items.map((f) => this.syncSchedule(carId, f)));
     return { financings: items.map(toClient) };
   }
 
   static async create(carId: string, userId: string, input: FinancingInput) {
     await this.verifyCarOwner(carId, userId);
     const financing = await prisma.financing.create({ data: { carId, ...toData(input) } });
+    await prisma.maintenanceSchedule.deleteMany({ where: { carId, type: 'Financiamento' } });
     await this.syncSchedule(carId, financing);
     return toClient(financing);
   }
