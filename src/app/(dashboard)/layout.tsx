@@ -16,7 +16,6 @@ import {
   LogOut,
   Menu,
   X,
-  Loader2,
   ChevronsLeft,
   ChevronDown,
   BookOpen,
@@ -138,18 +137,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [user, authLoading, router]);
 
-  if (authLoading || (!user && authLoading)) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <span className="text-slate-500 text-sm font-medium">Carregando painel...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) return null;
+  // Não bloqueia a tela esperando /api/auth/me: o layout renderiza já e a página
+  // filha começa a buscar os dados dela em paralelo com a checagem de sessão.
+  // Sem sessão, o effect acima já mandou para /login.
+  if (!authLoading && !user) return null;
 
   const topNav = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -377,13 +368,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           >
             <div
               className="h-9 w-9 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20 flex items-center justify-center font-bold text-sm shrink-0"
-              title={collapsed ? user.name : undefined}
+              title={collapsed ? user?.name : undefined}
             >
-              {user.name.charAt(0).toUpperCase()}
+              {user ? user.name.charAt(0).toUpperCase() : ''}
             </div>
             <CollapsibleLabel collapsed={collapsed} maxWidth="150px">
-              <p className="text-sm font-bold text-white truncate">{user.name}</p>
-              <p className="text-xs text-slate-500 truncate">{user.email}</p>
+              <p className="text-sm font-bold text-white truncate">{user?.name ?? ' '}</p>
+              <p className="text-xs text-slate-500 truncate">{user?.email ?? ' '}</p>
             </CollapsibleLabel>
           </div>
           <button
@@ -446,10 +437,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             <div className="pt-4 border-t border-white/5 flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20 flex items-center justify-center font-bold text-sm">
-                  {user.name.charAt(0).toUpperCase()}
+                  {user ? user.name.charAt(0).toUpperCase() : ''}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-white">{user.name}</p>
+                  <p className="text-sm font-bold text-white">{user?.name ?? ' '}</p>
                 </div>
               </div>
               <button
