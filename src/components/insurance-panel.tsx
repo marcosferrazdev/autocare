@@ -323,7 +323,7 @@ export function InsurancePanel({ carId, fillHeight = false }: { carId: string; f
   return (
     <div
       className={`bg-white rounded-lg border border-slate-200 shadow-sm p-6 ${
-        fillHeight ? 'flex flex-col h-full min-h-0 overflow-hidden' : 'space-y-5'
+        fillHeight ? 'lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden' : 'space-y-5'
       }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3 shrink-0">
@@ -358,11 +358,11 @@ export function InsurancePanel({ carId, fillHeight = false }: { carId: string; f
       </div>
 
       {loading ? (
-        <div className={`flex justify-center py-12 ${fillHeight ? 'flex-1' : ''}`}>
+        <div className={`flex justify-center py-12 ${fillHeight ? 'lg:flex-1' : ''}`}>
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         </div>
       ) : !policy ? (
-        <div className={`py-12 text-center ${fillHeight ? 'flex-1' : ''}`}>
+        <div className={`py-12 text-center ${fillHeight ? 'lg:flex-1' : ''}`}>
           <Shield className="h-10 w-10 text-slate-200 mx-auto mb-3" />
           <p className="text-slate-500 text-sm font-semibold mb-1">Nenhum seguro cadastrado</p>
           <p className="text-slate-400 text-xs max-w-md mx-auto leading-relaxed">
@@ -371,7 +371,7 @@ export function InsurancePanel({ carId, fillHeight = false }: { carId: string; f
           </p>
         </div>
       ) : (
-        <div className={`space-y-5 ${fillHeight ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 mt-4' : ''}`}>
+        <div className={`space-y-5 ${fillHeight ? 'mt-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1' : ''}`}>
           {banner && BannerIcon && (
             <div className={`flex items-start gap-3 p-3.5 border rounded-lg text-sm ${banner.className}`}>
               <BannerIcon className="h-5 w-5 shrink-0 mt-0.5" />

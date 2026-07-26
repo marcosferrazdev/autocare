@@ -194,7 +194,7 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
   return (
     <div
       className={`bg-white rounded-lg border border-slate-200 shadow-sm p-6 ${
-        fillHeight ? 'flex flex-col h-full min-h-0 overflow-hidden' : 'space-y-5'
+        fillHeight ? 'lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden' : 'space-y-5'
       }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3 shrink-0">
@@ -216,11 +216,11 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
       </p>
 
       {loading ? (
-        <div className={`flex justify-center py-8 ${fillHeight ? 'flex-1' : ''}`}>
+        <div className={`flex justify-center py-8 ${fillHeight ? 'lg:flex-1' : ''}`}>
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         </div>
       ) : schedules.length === 0 ? (
-        <div className={`py-10 text-center ${fillHeight ? 'flex-1' : ''}`}>
+        <div className={`py-10 text-center ${fillHeight ? 'lg:flex-1' : ''}`}>
           <BellRing className="h-10 w-10 text-slate-200 mx-auto mb-3" />
           <p className="text-slate-500 text-sm font-semibold mb-1">Nenhum lembrete configurado</p>
           <p className="text-slate-400 text-xs max-w-sm mx-auto leading-relaxed">
@@ -229,7 +229,7 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
           </p>
         </div>
       ) : (
-        <div className={`space-y-3 ${fillHeight ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1' : ''}`}>
+        <div className={`space-y-3 ${fillHeight ? 'lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1' : ''}`}>
           {schedules.map((s) => {
             const config = statusConfig[s.status];
             const Icon = config.icon;

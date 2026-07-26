@@ -769,12 +769,12 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
       </div>
 
       {/* Conteúdo das abas — título/abas fixos; rolagem nos cards (no mobile o bloco pode rolar se faltar altura) */}
-      <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
+      <div className="flex-1 min-h-0 touch-pan-y overflow-y-auto overscroll-y-auto lg:overflow-hidden lg:overscroll-none">
       {activeTab === 'historico' ? (
         /* Main Grid: Maintenances and Fuel Records Lists side-by-side */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-auto lg:h-full min-h-0">
           {/* Maintenances List */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col min-h-[280px] h-[min(55dvh,520px)] lg:h-full lg:min-h-0 overflow-hidden">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col min-h-[280px] lg:h-full lg:min-h-0 lg:overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 shrink-0">
               <div className="flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-blue-600" />
@@ -789,7 +789,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
             </div>
 
             {loading ? (
-              <div className="space-y-3 animate-pulse flex-1 min-h-0 overflow-y-auto">
+              <div className="space-y-3 animate-pulse lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
                 {[1, 2, 3].map((n) => (
                   <div key={n} className="py-3 flex justify-between items-center border-b border-slate-50 last:border-0 gap-3">
                     <div className="min-w-0 space-y-2 w-full">
@@ -811,7 +811,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
                 Nenhuma manutenção registrada para este carro.
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
+              <div className="divide-y divide-slate-100 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
                 {maintenances.map((m) => {
                   const isExpanded = !!expandedMaintenances[m.id];
                   const hasDetails = (m.parts && m.parts.length > 0) || m.notes || m.laborCost > 0;
@@ -931,7 +931,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           </div>
 
           {/* Fuel Records List */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col min-h-[280px] h-[min(55dvh,520px)] lg:h-full lg:min-h-0 overflow-hidden">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col min-h-[280px] lg:h-full lg:min-h-0 lg:overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 shrink-0">
               <div className="flex items-center gap-2">
                 <Fuel className="h-5 w-5 text-emerald-600" />
@@ -946,7 +946,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
             </div>
 
             {loading ? (
-              <div className="space-y-3 animate-pulse flex-1 min-h-0 overflow-y-auto">
+              <div className="space-y-3 animate-pulse lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
                 {[1, 2, 3].map((n) => (
                   <div key={n} className="py-3 flex justify-between items-center border-b border-slate-50 last:border-0 gap-3">
                     <div className="min-w-0 space-y-2 w-full">
@@ -969,7 +969,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
                 Nenhum abastecimento registrado para este carro.
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
+              <div className="divide-y divide-slate-100 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
                 {fuelRecords.map((f) => (
                   <div key={f.id} className="py-3 flex justify-between items-start text-xs gap-3">
                     <div>
@@ -1037,20 +1037,20 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
         </div>
       ) : activeTab === 'lembretes' ? (
         /* Lembretes de Manutenção Tab View */
-        <div className="h-full min-h-0">
+        <div className="lg:h-full lg:min-h-0">
           <SchedulesPanel carId={car.id} fillHeight />
         </div>
       ) : activeTab === 'seguro' ? (
-        <div className="h-full min-h-0">
+        <div className="lg:h-full lg:min-h-0">
           <InsurancePanel carId={car.id} fillHeight />
         </div>
       ) : activeTab === 'financiamento' ? (
-        <div className="h-full min-h-0">
+        <div className="lg:h-full lg:min-h-0">
           <FinancingPanel carId={car.id} fillHeight />
         </div>
       ) : activeTab === 'lavadas' ? (
         /* Lavagens Tab View */
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col h-full min-h-0 overflow-hidden">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <Droplets className="h-5 w-5 text-cyan-600" />
@@ -1077,7 +1077,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse flex-1 min-h-0 overflow-y-auto mt-4">
+            <div className="grid grid-cols-1 gap-4 mt-4 animate-pulse md:grid-cols-2 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
               {[1, 2, 3].map((n) => (
                 <div key={n} className="p-4 border border-slate-200 rounded-md flex gap-3 bg-white shadow-sm">
                   <div className="w-20 h-20 rounded-lg bg-slate-100 shrink-0" />
@@ -1098,7 +1098,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 content-start flex-1 min-h-0 overflow-y-auto overscroll-contain mt-4 pr-1">
+            <div className="grid grid-cols-1 gap-4 content-start mt-4 md:grid-cols-2 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
               {washRecords.map((w) => (
                 <div
                   key={w.id}
@@ -1181,7 +1181,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
         </div>
       ) : (
         /* Upgrades / Wishlist Tab View */
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col h-full min-h-0 overflow-hidden">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <ListTodo className="h-5 w-5 text-blue-600" />
@@ -1212,7 +1212,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse flex-1 min-h-0 overflow-y-auto mt-4">
+            <div className="grid grid-cols-1 gap-4 mt-4 animate-pulse md:grid-cols-2 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
               {[1, 2, 3, 4].map((n) => (
                 <div key={n} className="p-4 border border-slate-200 rounded-md flex gap-3 items-start bg-white shadow-sm">
                   {/* Checkbox Skeleton */}
@@ -1243,7 +1243,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
               <p className="text-[10px] font-medium text-slate-400/80">Registre itens que você gostaria de comprar ou reformar no seu veículo para mantê-los sob controle.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 content-start flex-1 min-h-0 overflow-y-auto overscroll-contain mt-4 pr-1">
+            <div className="grid grid-cols-1 gap-4 content-start mt-4 md:grid-cols-2 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
               {(() => {
                 const sortedUpgrades = [...upgrades].sort((a, b) => {
                   if (sortBy === 'recent') {
