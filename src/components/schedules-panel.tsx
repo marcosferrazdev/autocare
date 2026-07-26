@@ -5,6 +5,8 @@ import { formatDate, formatMileage } from '@/lib/formatters';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { ScheduleWithStatus } from '@/components/maintenance-alerts';
+import { PhotoPicker, PhotoThumb } from '@/components/photo-picker';
+import { parsePhotos } from '@/lib/photos';
 import {
   BellRing,
   Plus,
@@ -75,6 +77,7 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<ScheduleWithStatus | null>(null);
   const [form, setForm] = useState<ScheduleFormState>(emptyForm);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchSchedules = async () => {
@@ -99,6 +102,7 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
   const openAdd = () => {
     setEditing(null);
     setForm(emptyForm);
+    setPhotos([]);
     setFormError(null);
     setShowModal(true);
   };
@@ -114,6 +118,7 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
       lastDoneMileage: schedule.lastDoneMileage !== null ? String(schedule.lastDoneMileage) : '',
       lastDoneDate: schedule.lastDoneDate ? schedule.lastDoneDate.slice(0, 10) : '',
     });
+    setPhotos(parsePhotos(schedule.photoData));
     setFormError(null);
     setShowModal(true);
   };
@@ -135,6 +140,7 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
       intervalMonths: form.intervalMonths ? Number(form.intervalMonths) : null,
       lastDoneMileage: form.lastDoneMileage ? Number(form.lastDoneMileage) : null,
       lastDoneDate: form.lastDoneDate || null,
+      photos,
     };
 
     try {
@@ -231,6 +237,7 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
                 className="flex items-start gap-3.5 p-4 border border-slate-200 rounded-md hover:shadow-sm transition-all"
               >
                 <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${config.iconColor}`} />
+                <PhotoThumb photos={parsePhotos(s.photoData)} size="w-14 h-14" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-bold text-slate-800">{s.type}</p>
@@ -406,6 +413,15 @@ export function SchedulesPanel({ carId, fillHeight = false }: { carId: string; f
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
                     />
                   </div>
+                </div>
+
+                <div className="mt-4">
+                  <PhotoPicker
+                    photos={photos}
+                    onChange={setPhotos}
+                    label="Fotos da última conferência"
+                    hint="Ex.: foto da vareta de óleo, do pneu ou da peça na última vez que conferiu."
+                  />
                 </div>
               </div>
 

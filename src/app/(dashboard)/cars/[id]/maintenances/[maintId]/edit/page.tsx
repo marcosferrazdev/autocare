@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { MaintenanceSchema } from '@/lib/validations';
 import { formatCurrency } from '@/lib/formatters';
 import { useToast } from '@/components/ui/toast';
+import { PhotoPicker } from '@/components/photo-picker';
+import { parsePhotos } from '@/lib/photos';
 import { ArrowLeft, Loader2, Save, Wrench, Plus, Trash2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { z } from 'zod';
@@ -29,6 +31,8 @@ export default function EditMaintenancePage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [carName, setCarName] = useState('');
+
+  const [photos, setPhotos] = useState<string[]>([]);
 
   // Lista dinâmica de peças adicionadas à manutenção
   const [parts, setParts] = useState<PartItem[]>([]);
@@ -98,6 +102,8 @@ export default function EditMaintenancePage() {
           installmentValue: maint.installmentValue || 0,
           discount: maint.discount || 0,
         });
+
+        setPhotos(parsePhotos(maint.photoData));
 
         // Set parts list
         if (maint.parts) {
@@ -182,6 +188,7 @@ export default function EditMaintenancePage() {
       const payload = {
         ...data,
         parts, // Envia lista de peças acoplada
+        photos,
       };
 
       const res = await fetch(`/api/maintenances/${maintId}`, {
@@ -395,6 +402,13 @@ export default function EditMaintenancePage() {
               {...register('notes')}
             />
           </div>
+
+          <PhotoPicker
+            photos={photos}
+            onChange={setPhotos}
+            label="Fotos / Nota fiscal"
+            hint="Anexe a nota, o orçamento ou o estado da peça. Imagens são comprimidas no aparelho antes de salvar."
+          />
         </div>
 
         {/* Dynamic Parts List Module */}

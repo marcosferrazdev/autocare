@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { calculateFuelRecordTotal, calculateFuelConsumption } from '@/lib/calculations';
 import { FuelRecord, Prisma } from '@prisma/client';
+import { serializePhotos } from '@/lib/photos';
 import { CarService } from './car-service';
 
 export interface CreateFuelRecordInput {
@@ -16,6 +17,7 @@ export interface CreateFuelRecordInput {
   installmentCount?: number | null;
   installmentValue?: number | null;
   notes?: string | null;
+  photos?: string[] | null;
 }
 
 export class FuelRecordService {
@@ -147,6 +149,7 @@ export class FuelRecordService {
           installmentCount: input.installmentCount || 1,
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
+          photoData: serializePhotos(input.photos),
         },
       });
 
@@ -194,6 +197,8 @@ export class FuelRecordService {
           installmentCount: input.installmentCount || 1,
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
+          // undefined = cliente não enviou fotos; mantém as existentes
+          ...(input.photos !== undefined ? { photoData: serializePhotos(input.photos) } : {}),
         },
       });
 

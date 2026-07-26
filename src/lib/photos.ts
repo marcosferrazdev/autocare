@@ -1,5 +1,5 @@
-/** Máximo de fotos por lavagem. */
-export const MAX_WASH_PHOTOS = 3;
+/** Máximo de fotos por registro (lavagem, manutenção, abastecimento, lembrete). */
+export const MAX_PHOTOS = 5;
 
 /** Tamanho alvo do data URL após compressão (~210 KB de imagem). */
 export const TARGET_PHOTO_DATA_URL_LEN = 280_000;
@@ -12,7 +12,7 @@ export const MAX_PHOTO_DATA_URL_LEN = 400_000;
  * - JSON array de data URLs (formato novo)
  * - um único data URL (formato antigo)
  */
-export function parseWashPhotos(photoData: string | null | undefined): string[] {
+export function parsePhotos(photoData: string | null | undefined): string[] {
   if (!photoData) return [];
   const trimmed = photoData.trim();
   if (!trimmed) return [];
@@ -23,7 +23,7 @@ export function parseWashPhotos(photoData: string | null | undefined): string[] 
       if (!Array.isArray(arr)) return [];
       return arr
         .filter((x): x is string => typeof x === 'string' && x.startsWith('data:image/'))
-        .slice(0, MAX_WASH_PHOTOS);
+        .slice(0, MAX_PHOTOS);
     } catch {
       return [];
     }
@@ -37,11 +37,11 @@ export function parseWashPhotos(photoData: string | null | undefined): string[] 
 }
 
 /** Serializa até 3 fotos para gravar em photoData (Text). */
-export function serializeWashPhotos(photos: string[] | null | undefined): string | null {
+export function serializePhotos(photos: string[] | null | undefined): string | null {
   if (!photos || photos.length === 0) return null;
   const cleaned = photos
     .filter((p) => typeof p === 'string' && p.startsWith('data:image/'))
-    .slice(0, MAX_WASH_PHOTOS);
+    .slice(0, MAX_PHOTOS);
   if (cleaned.length === 0) return null;
   return JSON.stringify(cleaned);
 }

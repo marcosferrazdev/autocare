@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { calculatePartTotal, calculateTotalPartsCost, calculateMaintenanceTotal } from '@/lib/calculations';
 import { Maintenance, MaintenancePart, Prisma } from '@prisma/client';
+import { serializePhotos } from '@/lib/photos';
 import { CarService } from './car-service';
 
 export interface MaintenancePartInput {
@@ -24,6 +25,7 @@ export interface CreateMaintenanceInput {
   installmentCount?: number | null;
   installmentValue?: number | null;
   discount?: number | null;
+  photos?: string[] | null;
 }
 
 export class MaintenanceService {
@@ -149,6 +151,7 @@ export class MaintenanceService {
           installmentCount: input.installmentCount || 1,
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
+          photoData: serializePhotos(input.photos),
           parts: {
             create: partsData,
           },
@@ -228,6 +231,8 @@ export class MaintenanceService {
           installmentCount: input.installmentCount || 1,
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
+          // undefined = cliente não enviou fotos; mantém as existentes
+          ...(input.photos !== undefined ? { photoData: serializePhotos(input.photos) } : {}),
           parts: {
             create: partsData,
           },

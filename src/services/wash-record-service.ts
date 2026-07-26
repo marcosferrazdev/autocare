@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { WashRecord, Prisma } from '@prisma/client';
-import { parseWashPhotos, serializeWashPhotos, MAX_WASH_PHOTOS } from '@/lib/wash-photos';
+import { parsePhotos, serializePhotos, MAX_PHOTOS } from '@/lib/photos';
 
 export interface WashRecordInput {
   date?: string | Date;
@@ -22,7 +22,7 @@ function toClient(record: WashRecord): WashRecordWithPhotos {
   const { photoData, ...rest } = record;
   return {
     ...rest,
-    photos: parseWashPhotos(photoData),
+    photos: parsePhotos(photoData),
   };
 }
 
@@ -80,7 +80,7 @@ export class WashRecordService {
     }
 
     const selfWash = Boolean(input.selfWash);
-    const photos = (input.photos || []).slice(0, MAX_WASH_PHOTOS);
+    const photos = (input.photos || []).slice(0, MAX_PHOTOS);
 
     const record = await prisma.washRecord.create({
       data: {
@@ -92,7 +92,7 @@ export class WashRecordService {
         price: input.price ?? 0,
         washType: input.washType || null,
         notes: input.notes || null,
-        photoData: serializeWashPhotos(photos),
+        photoData: serializePhotos(photos),
       },
     });
 
@@ -115,7 +115,7 @@ export class WashRecordService {
     if (input.clearPhoto) {
       photoData = null;
     } else if (input.photos !== undefined) {
-      photoData = serializeWashPhotos(input.photos);
+      photoData = serializePhotos(input.photos);
     }
 
     const updated = await prisma.washRecord.update({

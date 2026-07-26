@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+// Anexos de imagem (opcionais): até 3 data URLs JPEG comprimidos no cliente
+const PhotosSchema = z
+  .array(
+    z
+      .string()
+      .max(400_000, 'Uma das fotos é muito grande. Escolha uma imagem menor.')
+      .refine((s) => s.startsWith('data:image/'), 'Formato de imagem inválido')
+  )
+  .max(5, 'Máximo de 5 fotos')
+  .optional()
+  .nullable();
+
 export const RegisterSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('E-mail inválido'),
@@ -86,6 +98,7 @@ export const MaintenanceSchema = z.object({
   installmentCount: z.coerce.number().int().min(1).optional().nullable(),
   installmentValue: z.coerce.number().min(0).optional().nullable(),
   discount: z.coerce.number().min(0).optional().nullable(),
+  photos: PhotosSchema,
 });
 
 // Validação de Abastecimento
@@ -110,6 +123,7 @@ export const FuelRecordSchema = z.object({
   installmentCount: z.coerce.number().int().min(1).optional().nullable(),
   installmentValue: z.coerce.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable().or(z.literal('')),
+  photos: PhotosSchema,
 });
 
 // Validação de Informações da Web (Edição Manual)
@@ -157,6 +171,7 @@ export const MaintenanceScheduleSchema = z
     intervalMonths: z.coerce.number().int().gt(0, 'O intervalo em meses deve ser maior que zero').optional().nullable(),
     lastDoneMileage: z.coerce.number().min(0, 'A quilometragem não pode ser negativa').optional().nullable(),
     lastDoneDate: z.string().optional().nullable().or(z.literal('')),
+    photos: PhotosSchema,
   })
   .refine((data) => data.intervalKm || data.intervalDays || data.intervalMonths, {
     message: 'Informe pelo menos um intervalo (km, dias ou meses)',
@@ -208,17 +223,7 @@ export const WashRecordBaseSchema = z.object({
     .nullable()
     .or(z.literal('')),
   notes: z.string().max(1000, 'Observações muito longas').optional().nullable().or(z.literal('')),
-  // Até 3 data URLs JPEG comprimidos no cliente
-  photos: z
-    .array(
-      z
-        .string()
-        .max(400_000, 'Uma das fotos é muito grande. Escolha uma imagem menor.')
-        .refine((s) => s.startsWith('data:image/'), 'Formato de imagem inválido')
-    )
-    .max(3, 'Máximo de 3 fotos por lavagem')
-    .optional()
-    .nullable(),
+  photos: PhotosSchema,
   clearPhoto: z.boolean().optional(),
 });
 

@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency, formatMileage, formatDate, formatConsumption } from '@/lib/formatters';
-import { MAX_WASH_PHOTOS, TARGET_PHOTO_DATA_URL_LEN, MAX_PHOTO_DATA_URL_LEN } from '@/lib/wash-photos';
+import { MAX_PHOTOS, parsePhotos } from '@/lib/photos';
+import { PhotoPicker, PhotoThumb } from '@/components/photo-picker';
 import { SchedulesPanel } from '@/components/schedules-panel';
 import { InsurancePanel } from '@/components/insurance-panel';
 import { FinancingPanel } from '@/components/financing-panel';
@@ -32,70 +33,16 @@ import {
   CheckCircle2,
   Circle,
   Droplets,
-  Camera,
   User,
-  X,
   ImageIcon,
-  ChevronLeft,
-  ChevronRight,
   Shield,
   Landmark,
 } from 'lucide-react';
 
 const WASH_TYPES = ['Completa', 'Externa', 'Interna', 'Motor', 'Detalhamento', 'Outro'] as const;
 
-const MAX_INPUT_IMAGE_BYTES = 12 * 1024 * 1024; // 12 MB no arquivo original
-
-/**
- * Redimensiona e comprime no cliente (JPEG) para não sobrecarregar o banco.
- * Tenta várias passadas até o data URL ficar ~280 KB (ou no limite rígido).
- */
-async function compressImageToDataUrl(file: File): Promise<string> {
-  if (file.size > MAX_INPUT_IMAGE_BYTES) {
-    throw new Error('Imagem muito grande (máx. 12 MB).');
-  }
-
-  const bitmap = await createImageBitmap(file);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    bitmap.close();
-    throw new Error('Não foi possível processar a imagem.');
-  }
-
-  let maxWidth = 720;
-  let quality = 0.68;
-  let dataUrl = '';
-
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const scale = Math.min(1, maxWidth / bitmap.width);
-    const width = Math.max(1, Math.round(bitmap.width * scale));
-    const height = Math.max(1, Math.round(bitmap.height * scale));
-    canvas.width = width;
-    canvas.height = height;
-    ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(bitmap, 0, 0, width, height);
-    dataUrl = canvas.toDataURL('image/jpeg', quality);
-
-    if (dataUrl.length <= TARGET_PHOTO_DATA_URL_LEN) {
-      bitmap.close();
-      return dataUrl;
-    }
-
-    quality = Math.max(0.4, quality - 0.08);
-    maxWidth = Math.round(maxWidth * 0.82);
-  }
-
-  bitmap.close();
-
-  if (dataUrl.length > MAX_PHOTO_DATA_URL_LEN) {
-    throw new Error('Não foi possível comprimir a imagem o suficiente. Tente outra foto.');
-  }
-  return dataUrl;
-}
-
 function getWashPhotos(item: { photos?: string[]; photoData?: string | null }): string[] {
-  if (Array.isArray(item.photos)) return item.photos.slice(0, MAX_WASH_PHOTOS);
+  if (Array.isArray(item.photos)) return item.photos.slice(0, MAX_PHOTOS);
   return [];
 }
 
@@ -272,8 +219,6 @@ export default function CarDetailPage() {
   const [submittingWash, setSubmittingWash] = useState(false);
   const [editingWash, setEditingWash] = useState<any | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
-  const [compressingPhoto, setCompressingPhoto] = useState(false);
-  const [viewGallery, setViewGallery] = useState<{ photos: string[]; index: number } | null>(null);
   const [washForm, setWashForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     mileage: '',
@@ -443,49 +388,6 @@ export default function CarDetailPage() {
     });
     setPhotoPreviews(getWashPhotos(item));
     setShowWashModal(true);
-  };
-
-  const handleWashPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-    if (files.length === 0) return;
-
-    const slotsLeft = MAX_WASH_PHOTOS - photoPreviews.length;
-    if (slotsLeft <= 0) {
-      toast(`Máximo de ${MAX_WASH_PHOTOS} fotos por lavagem.`);
-      return;
-    }
-
-    const toProcess = files.slice(0, slotsLeft);
-    if (files.length > slotsLeft) {
-      toast(`Só é possível adicionar mais ${slotsLeft} foto(s) (máx. ${MAX_WASH_PHOTOS}).`);
-    }
-
-    try {
-      setCompressingPhoto(true);
-      const compressed: string[] = [];
-      for (const file of toProcess) {
-        if (!file.type.startsWith('image/')) {
-          toast(`Arquivo ignorado (não é imagem): ${file.name}`);
-          continue;
-        }
-        try {
-          compressed.push(await compressImageToDataUrl(file));
-        } catch (err: any) {
-          console.error(err);
-          toast(err?.message || `Falha ao comprimir ${file.name}`);
-        }
-      }
-      if (compressed.length > 0) {
-        setPhotoPreviews((prev) => [...prev, ...compressed].slice(0, MAX_WASH_PHOTOS));
-      }
-    } finally {
-      setCompressingPhoto(false);
-    }
-  };
-
-  const handleRemoveWashPhotoAt = (index: number) => {
-    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveWash = async (e: React.FormEvent) => {
@@ -936,6 +838,7 @@ export default function CarDetailPage() {
                         </div>
 
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <PhotoThumb photos={parsePhotos(m.photoData)} size="w-12 h-12" />
                           <div className="text-right">
                             <span className="font-bold text-slate-800 block">{formatCurrency(m.totalCost)}</span>
                             {m.discount && m.discount > 0 ? (
@@ -1081,6 +984,7 @@ export default function CarDetailPage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <PhotoThumb photos={parsePhotos(f.photoData)} size="w-12 h-12" />
                       <span className="font-bold text-slate-800 block">{formatCurrency(f.totalPrice)}</span>
                       <div className="flex items-center gap-2 print:hidden">
                         <Link
@@ -1174,31 +1078,13 @@ export default function CarDetailPage() {
                   key={w.id}
                   className="p-4 border border-slate-200 rounded-md flex gap-3 items-start bg-white shadow-sm hover:border-slate-300 transition-all"
                 >
-                  {(() => {
-                    const photos = getWashPhotos(w);
-                    if (photos.length === 0) {
-                      return (
-                        <div className="w-20 h-20 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center shrink-0">
-                          <ImageIcon className="h-6 w-6 text-slate-300" />
-                        </div>
-                      );
-                    }
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => setViewGallery({ photos, index: 0 })}
-                        className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 hover:border-cyan-400 transition-all"
-                        title={photos.length > 1 ? `Ver ${photos.length} fotos` : 'Ver foto'}
-                      >
-                        <img src={photos[0]} alt="Foto da lavagem" className="w-full h-full object-cover" />
-                        {photos.length > 1 && (
-                          <span className="absolute bottom-1 right-1 text-[9px] font-bold bg-slate-900/75 text-white px-1.5 py-0.5 rounded">
-                            +{photos.length - 1}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })()}
+                  {getWashPhotos(w).length === 0 ? (
+                    <div className="w-20 h-20 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center shrink-0">
+                      <ImageIcon className="h-6 w-6 text-slate-300" />
+                    </div>
+                  ) : (
+                    <PhotoThumb photos={getWashPhotos(w)} />
+                  )}
 
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1702,55 +1588,7 @@ export default function CarDetailPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xxs font-bold text-slate-600 uppercase mb-1.5 tracking-wider">
-                  Fotos{' '}
-                  <span className="text-slate-400 normal-case font-medium">
-                    (opcional, máx. {MAX_WASH_PHOTOS})
-                  </span>
-                </label>
-                <p className="text-[10px] text-slate-400 font-medium mb-2 leading-relaxed">
-                  Imagens grandes são redimensionadas e comprimidas no celular/PC antes de salvar (~720px, JPEG).
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {photoPreviews.map((src, index) => (
-                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-                      <img src={src} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveWashPhotoAt(index)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-slate-900/70 text-white hover:bg-red-600 transition-all"
-                        title="Remover foto"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  {photoPreviews.length < MAX_WASH_PHOTOS && (
-                    <label className="aspect-square flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 hover:border-cyan-400 hover:bg-cyan-50/30 cursor-pointer transition-all">
-                      {compressingPhoto ? (
-                        <Loader2 className="h-5 w-5 text-cyan-600 animate-spin" />
-                      ) : (
-                        <>
-                          <Camera className="h-5 w-5 text-slate-400" />
-                          <span className="text-[9px] font-bold text-slate-500 text-center px-1">
-                            {photoPreviews.length === 0 ? 'Adicionar' : 'Mais'}
-                          </span>
-                        </>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        capture="environment"
-                        className="hidden"
-                        disabled={compressingPhoto}
-                        onChange={handleWashPhotoChange}
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
+              <PhotoPicker photos={photoPreviews} onChange={setPhotoPreviews} />
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
@@ -1781,75 +1619,6 @@ export default function CarDetailPage() {
         </div>
       )}
 
-      {/* Photo lightbox (até 3 fotos) — navegação abaixo da imagem, sem sobrepor a foto */}
-      {viewGallery && viewGallery.photos.length > 0 && (
-        <div
-          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex flex-col"
-          onClick={() => setViewGallery(null)}
-        >
-          <div className="flex items-center justify-end shrink-0 p-4">
-            <button
-              type="button"
-              className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-              onClick={() => setViewGallery(null)}
-              title="Fechar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div
-            className="flex-1 min-h-0 flex items-center justify-center px-4 pb-2"
-            onClick={() => setViewGallery(null)}
-          >
-            <img
-              src={viewGallery.photos[viewGallery.index]}
-              alt={`Foto ${viewGallery.index + 1} da lavagem`}
-              className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
-          {viewGallery.photos.length > 1 ? (
-            <div
-              className="shrink-0 flex items-center justify-center gap-4 px-4 pb-6 pt-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                className="p-2.5 rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
-                onClick={() =>
-                  setViewGallery((g) =>
-                    g
-                      ? { ...g, index: (g.index - 1 + g.photos.length) % g.photos.length }
-                      : g
-                  )
-                }
-                title="Foto anterior"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <p className="text-xs font-semibold text-white/90 min-w-[3rem] text-center tabular-nums">
-                {viewGallery.index + 1} / {viewGallery.photos.length}
-              </p>
-              <button
-                type="button"
-                className="p-2.5 rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
-                onClick={() =>
-                  setViewGallery((g) =>
-                    g ? { ...g, index: (g.index + 1) % g.photos.length } : g
-                  )
-                }
-                title="Próxima foto"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          ) : (
-            <div className="shrink-0 pb-6" />
-          )}
-        </div>
-      )}
     </div>
   );
 }

@@ -63,6 +63,8 @@ model Maintenance {
   installmentCount Int?              @default(1)
   installmentValue Float?
   notes            String?
+  // JSON array de data URLs (máx. 5); comprimidos no cliente
+  photoData        String?           @db.Text
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   car              Car               @relation(fields: [carId], references: [id], onDelete: Cascade)
@@ -98,6 +100,8 @@ model FuelRecord {
   installmentCount      Int?     @default(1)
   installmentValue      Float?
   notes                 String?
+  // JSON array de data URLs (máx. 5); comprimidos no cliente
+  photoData             String?  @db.Text
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   car                   Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
@@ -133,6 +137,8 @@ model MaintenanceSchedule {
   intervalMonths  Int?
   lastDoneMileage Float?
   lastDoneDate    DateTime?
+  // JSON array de data URLs (máx. 5); comprimidos no cliente
+  photoData       String?   @db.Text
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   car             Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
@@ -180,7 +186,7 @@ model WashRecord {
   price       Float    @default(0)
   washType    String?  // "Completa" | "Externa" | "Interna" | "Motor" | "Detalhamento" | "Outro"
   notes       String?
-  // JSON array de data URLs (máx. 3) ou 1 data URL legado; comprimidos no cliente
+  // JSON array de data URLs (máx. 5) ou 1 data URL legado; comprimidos no cliente
   photoData   String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

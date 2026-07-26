@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FuelRecordSchema } from '@/lib/validations';
 import { formatCurrency } from '@/lib/formatters';
+import { PhotoPicker } from '@/components/photo-picker';
 import { ArrowLeft, Loader2, Save, Fuel, AlertCircle, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { z } from 'zod';
@@ -20,6 +21,7 @@ export default function NewFuelRecordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [carName, setCarName] = useState('');
   const [totalPaid, setTotalPaid] = useState<number | string>('');
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const {
     register,
@@ -160,7 +162,7 @@ export default function NewFuelRecordPage() {
       const res = await fetch(`/api/cars/${carId}/fuel-records`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, photos }),
       });
 
       if (!res.ok) {
@@ -395,6 +397,13 @@ export default function NewFuelRecordPage() {
             {...register('notes')}
           />
         </div>
+
+        <PhotoPicker
+          photos={photos}
+          onChange={setPhotos}
+          label="Fotos / Cupom"
+          hint="Anexe o cupom fiscal ou a bomba. Imagens são comprimidas no aparelho antes de salvar."
+        />
 
         {/* Resumo visual do cálculo */}
         <div className="bg-slate-50 rounded-md p-4 border border-slate-100 flex items-center justify-between text-xs font-semibold">

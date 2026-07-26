@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { MaintenanceSchedule } from '@prisma/client';
+import { serializePhotos } from '@/lib/photos';
 
 export interface CreateScheduleInput {
   type: string;
@@ -9,6 +10,7 @@ export interface CreateScheduleInput {
   intervalMonths?: number | null;
   lastDoneMileage?: number | null;
   lastDoneDate?: string | Date | null;
+  photos?: string[] | null;
 }
 
 export type ScheduleStatus = 'atrasado' | 'proximo' | 'ok' | 'sem_referencia';
@@ -196,6 +198,7 @@ export class MaintenanceScheduleService {
         intervalMonths: input.intervalMonths || null,
         lastDoneMileage: input.lastDoneMileage ?? null,
         lastDoneDate: input.lastDoneDate ? new Date(input.lastDoneDate) : null,
+        photoData: serializePhotos(input.photos),
       },
     });
   }
@@ -232,6 +235,8 @@ export class MaintenanceScheduleService {
         intervalMonths: input.intervalMonths || null,
         lastDoneMileage: input.lastDoneMileage ?? null,
         lastDoneDate: input.lastDoneDate ? new Date(input.lastDoneDate) : null,
+        // undefined = cliente não enviou fotos; mantém as existentes
+        ...(input.photos !== undefined ? { photoData: serializePhotos(input.photos) } : {}),
       },
     });
   }

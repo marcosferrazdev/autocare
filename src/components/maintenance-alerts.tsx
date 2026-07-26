@@ -14,6 +14,7 @@ export interface ScheduleWithStatus {
   intervalMonths: number | null;
   lastDoneMileage: number | null;
   lastDoneDate: string | null;
+  photoData: string | null;
   status: 'atrasado' | 'proximo' | 'ok' | 'sem_referencia';
   nextDueMileage: number | null;
   nextDueDate: string | null;
