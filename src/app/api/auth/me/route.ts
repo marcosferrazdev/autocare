@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth';
+import { getAuthenticatedUserProfile } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const user = await getAuthenticatedUser();
+    const user = await getAuthenticatedUserProfile();
     
     if (!user) {
       return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });

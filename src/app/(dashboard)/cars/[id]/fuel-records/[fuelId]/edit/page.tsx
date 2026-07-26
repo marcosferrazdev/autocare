@@ -57,15 +57,16 @@ export default function EditFuelRecordPage() {
         setLoading(true);
         setError(null);
 
-        // Buscar dados do carro
-        const carRes = await fetch(`/api/cars/${carId}`);
+        const [carRes, recordRes] = await Promise.all([
+          fetch(`/api/cars/${carId}`),
+          fetch(`/api/fuel-records/${fuelId}`),
+        ]);
+
         if (carRes.ok) {
           const car = await carRes.json();
           setCarName(`${car.brand} ${car.model}`);
         }
 
-        // Buscar dados do abastecimento
-        const recordRes = await fetch(`/api/fuel-records/${fuelId}`);
         if (!recordRes.ok) {
           throw new Error('Falha ao carregar dados do abastecimento.');
         }

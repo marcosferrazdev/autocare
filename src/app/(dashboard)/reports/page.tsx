@@ -154,17 +154,11 @@ export default function ReportsPage() {
       if (endDate) maintParams.append('endDate', endDate);
       if (maintTypeFilter) maintParams.append('type', maintTypeFilter);
 
-      const maintRes = await fetch(`/api/cars/${selectedCarId}/maintenances?${maintParams.toString()}`);
-      const maintData = maintRes.ok ? await maintRes.json() : [];
-
       // Constrói query params para abastecimentos
       const fuelParams = new URLSearchParams();
       if (startDate) fuelParams.append('startDate', startDate);
       if (endDate) fuelParams.append('endDate', endDate);
       if (fuelTypeFilter) fuelParams.append('fuelType', fuelTypeFilter);
-
-      const fuelRes = await fetch(`/api/cars/${selectedCarId}/fuel-records?${fuelParams.toString()}`);
-      const fuelData = fuelRes.ok ? await fuelRes.json() : [];
 
       // Constrói query params para lavagens
       const washParams = new URLSearchParams();
@@ -172,13 +166,19 @@ export default function ReportsPage() {
       if (endDate) washParams.append('endDate', endDate);
       if (washTypeFilter) washParams.append('washType', washTypeFilter);
 
-      const washRes = await fetch(`/api/cars/${selectedCarId}/wash-records?${washParams.toString()}`);
+      // Em paralelo: os cinco relatórios são independentes
+      const [maintRes, fuelRes, washRes, insRes, finRes] = await Promise.all([
+        fetch(`/api/cars/${selectedCarId}/maintenances?${maintParams.toString()}`),
+        fetch(`/api/cars/${selectedCarId}/fuel-records?${fuelParams.toString()}`),
+        fetch(`/api/cars/${selectedCarId}/wash-records?${washParams.toString()}`),
+        fetch(`/api/cars/${selectedCarId}/insurance`),
+        fetch(`/api/cars/${selectedCarId}/financing`),
+      ]);
+
+      const maintData = maintRes.ok ? await maintRes.json() : [];
+      const fuelData = fuelRes.ok ? await fuelRes.json() : [];
       const washData = washRes.ok ? await washRes.json() : [];
-
-      const insRes = await fetch(`/api/cars/${selectedCarId}/insurance`);
       const insData = insRes.ok ? await insRes.json() : { policy: null, claims: [] };
-
-      const finRes = await fetch(`/api/cars/${selectedCarId}/financing`);
       const finData = finRes.ok ? await finRes.json() : { financings: [] };
 
       setMaintenances(maintData);

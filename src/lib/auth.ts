@@ -67,9 +67,11 @@ export async function removeAuthCookie(): Promise<void> {
 }
 
 /**
- * Busca o usuário autenticado a partir dos cookies da requisição
+ * Identidade do usuário autenticado, lida direto do JWT assinado — sem ida ao banco.
+ * As rotas sempre filtram os dados por userId, então um token de usuário removido
+ * simplesmente não encontra nada.
  */
-export async function getAuthenticatedUser() {
+export async function getAuthenticatedUser(): Promise<{ id: string; email: string } | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
@@ -79,18 +81,27 @@ export async function getAuthenticatedUser() {
     const decoded = verifyToken(token);
     if (!decoded) return null;
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-      },
-    });
-
-    return user;
+    return { id: decoded.userId, email: decoded.email };
   } catch (error) {
     return null;
   }
+}
+
+/**
+ * Perfil completo do usuário (nome, e-mail). Só use quando precisar dos dados
+ * de exibição — custa uma consulta ao banco.
+ */
+export async function getAuthenticatedUserProfile() {
+  const auth = await getAuthenticatedUser();
+  if (!auth) return null;
+
+  return prisma.user.findUnique({
+    where: { id: auth.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+    },
+  });
 }

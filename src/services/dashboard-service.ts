@@ -100,29 +100,57 @@ export class DashboardService {
       throw new Error('Veículo não encontrado ou acesso não autorizado.');
     }
 
-    const maintenances = await prisma.maintenance.findMany({
-      where: { carId },
-      orderBy: { date: 'asc' },
-    });
-
-    const fuelRecords = await prisma.fuelRecord.findMany({
-      where: { carId },
-      orderBy: { date: 'asc' },
-    });
-
-    const washRecords = await prisma.washRecord.findMany({
-      where: { carId },
-      orderBy: { date: 'asc' },
-    });
-
-    const insurancePolicy = await prisma.insurancePolicy.findUnique({
-      where: { carId },
-    });
-
-    const insuranceClaims = await prisma.insuranceClaim.findMany({
-      where: { carId },
-      orderBy: { date: 'asc' },
-    });
+    // Em paralelo e só com as colunas usadas nos agregados — nada de photoData,
+    // que traria as fotos em base64 junto.
+    const [maintenances, fuelRecords, washRecords, insurancePolicy, insuranceClaims] =
+      await Promise.all([
+        prisma.maintenance.findMany({
+          where: { carId },
+          orderBy: { date: 'asc' },
+          select: {
+            date: true,
+            type: true,
+            description: true,
+            mileage: true,
+            totalCost: true,
+            paymentMethod: true,
+            installmentCount: true,
+            installmentValue: true,
+          },
+        }),
+        prisma.fuelRecord.findMany({
+          where: { carId },
+          orderBy: { date: 'asc' },
+          select: {
+            date: true,
+            mileage: true,
+            liters: true,
+            totalPrice: true,
+            consumptionKmPerLiter: true,
+            paymentMethod: true,
+            installmentCount: true,
+            installmentValue: true,
+          },
+        }),
+        prisma.washRecord.findMany({
+          where: { carId },
+          orderBy: { date: 'asc' },
+          select: {
+            date: true,
+            mileage: true,
+            price: true,
+            selfWash: true,
+            carWashName: true,
+          },
+        }),
+        prisma.insurancePolicy.findUnique({
+          where: { carId },
+        }),
+        prisma.insuranceClaim.findMany({
+          where: { carId },
+          orderBy: { date: 'asc' },
+        }),
+      ]);
 
     const totalMaintenanceCost = maintenances.reduce((sum, m) => sum + m.totalCost, 0);
     const totalFuelCost = fuelRecords.reduce((sum, f) => sum + f.totalPrice, 0);

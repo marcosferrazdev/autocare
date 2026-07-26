@@ -473,8 +473,15 @@ export default function CarDetailPage() {
       setLoading(true);
       setError(null);
 
-      // Carregar carro
-      const carRes = await fetch(`/api/cars/${id}`);
+      // Em paralelo: sequencial custava uma ida e volta por lista
+      const [carRes, maintRes, fuelRes, upgradesRes, washRes] = await Promise.all([
+        fetch(`/api/cars/${id}`),
+        fetch(`/api/cars/${id}/maintenances`),
+        fetch(`/api/cars/${id}/fuel-records`),
+        fetch(`/api/cars/${id}/upgrades`),
+        fetch(`/api/cars/${id}/wash-records`),
+      ]);
+
       if (!carRes.ok) throw new Error('Falha ao carregar veículo.');
       const carData = await carRes.json();
       setCar(carData);
@@ -483,33 +490,10 @@ export default function CarDetailPage() {
         setWebInfoForm(carData.vehicleWebInfo);
       }
 
-      // Carregar manutenções
-      const maintRes = await fetch(`/api/cars/${id}/maintenances`);
-      if (maintRes.ok) {
-        const maintData = await maintRes.json();
-        setMaintenances(maintData);
-      }
-
-      // Carregar abastecimentos
-      const fuelRes = await fetch(`/api/cars/${id}/fuel-records`);
-      if (fuelRes.ok) {
-        const fuelData = await fuelRes.json();
-        setFuelRecords(fuelData);
-      }
-
-      // Carregar melhorias / wishlist
-      const upgradesRes = await fetch(`/api/cars/${id}/upgrades`);
-      if (upgradesRes.ok) {
-        const upgradesData = await upgradesRes.json();
-        setUpgrades(upgradesData);
-      }
-
-      // Carregar lavagens
-      const washRes = await fetch(`/api/cars/${id}/wash-records`);
-      if (washRes.ok) {
-        const washData = await washRes.json();
-        setWashRecords(washData);
-      }
+      if (maintRes.ok) setMaintenances(await maintRes.json());
+      if (fuelRes.ok) setFuelRecords(await fuelRes.json());
+      if (upgradesRes.ok) setUpgrades(await upgradesRes.json());
+      if (washRes.ok) setWashRecords(await washRes.json());
 
     } catch (err: any) {
       console.error(err);

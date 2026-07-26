@@ -80,9 +80,12 @@ export function CarProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // user.id, não o objeto: a identidade do objeto mudava a cada revalidação
+  // e disparava um /api/cars extra por navegação.
   useEffect(() => {
     fetchCars();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const selectedCar = cars.find(c => c.id === selectedCarId) || null;
 

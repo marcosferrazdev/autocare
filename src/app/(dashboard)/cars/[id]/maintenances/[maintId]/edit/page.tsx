@@ -72,15 +72,16 @@ export default function EditMaintenancePage() {
         setLoading(true);
         setError(null);
 
-        // Carregar carro
-        const carRes = await fetch(`/api/cars/${carId}`);
+        const [carRes, maintRes] = await Promise.all([
+          fetch(`/api/cars/${carId}`),
+          fetch(`/api/maintenances/${maintId}`),
+        ]);
+
         if (carRes.ok) {
           const car = await carRes.json();
           setCarName(`${car.brand} ${car.model}`);
         }
 
-        // Carregar manutenção
-        const maintRes = await fetch(`/api/maintenances/${maintId}`);
         if (!maintRes.ok) {
           throw new Error('Falha ao carregar dados da manutenção.');
         }
