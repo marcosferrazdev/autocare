@@ -5,7 +5,9 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // omitApi: listagens excluem photoData sem ter que enumerar todo o resto
+  previewFeatures = ["omitApi"]
 }
 
 model User {
@@ -65,6 +67,8 @@ model Maintenance {
   notes            String?
   // JSON array de data URLs (máx. 5); comprimidos no cliente
   photoData        String?           @db.Text
+  // Miniatura ~96px da 1a foto: é o que as listagens carregam
+  thumbData        String?           @db.Text
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   car              Car               @relation(fields: [carId], references: [id], onDelete: Cascade)
@@ -102,6 +106,8 @@ model FuelRecord {
   notes                 String?
   // JSON array de data URLs (máx. 5); comprimidos no cliente
   photoData             String?  @db.Text
+  // Miniatura ~96px da 1a foto: é o que as listagens carregam
+  thumbData             String?  @db.Text
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   car                   Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
@@ -188,6 +194,8 @@ model WashRecord {
   notes       String?
   // JSON array de data URLs (máx. 5) ou 1 data URL legado; comprimidos no cliente
   photoData   String?  @db.Text
+  // Miniatura ~96px da 1a foto: é o que as listagens carregam
+  thumbData   String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)

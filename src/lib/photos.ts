@@ -7,6 +7,12 @@ export const TARGET_PHOTO_DATA_URL_LEN = 280_000;
 /** Limite rígido por foto no servidor (data URL). */
 export const MAX_PHOTO_DATA_URL_LEN = 400_000;
 
+/** Lado maior da miniatura que as listagens carregam. */
+export const THUMB_MAX_SIDE = 96;
+
+/** Limite da miniatura no servidor (data URL). */
+export const MAX_THUMB_DATA_URL_LEN = 30_000;
+
 /**
  * Lê o campo photoData do banco:
  * - JSON array de data URLs (formato novo)

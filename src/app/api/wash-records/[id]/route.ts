@@ -7,6 +7,23 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+export async function GET(request: Request, { params }: RouteParams) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const record = await WashRecordService.getById(id, user.id);
+    return NextResponse.json(record, { status: 200 });
+  } catch (error: any) {
+    console.error('Erro ao buscar lavagem:', error);
+    const status = error.message?.includes('permissão') || error.message?.includes('autorizado') ? 403 : 500;
+    return NextResponse.json({ error: error.message || 'Erro ao carregar lavagem.' }, { status });
+  }
+}
+
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const user = await getAuthenticatedUser();

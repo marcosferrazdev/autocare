@@ -12,6 +12,14 @@ const PhotosSchema = z
   .optional()
   .nullable();
 
+// Miniatura ~96px da 1a foto, gerada no cliente; é o que as listagens carregam
+const ThumbSchema = z
+  .string()
+  .max(30_000, 'Miniatura inválida')
+  .refine((s) => s.startsWith('data:image/'), 'Formato de imagem inválido')
+  .optional()
+  .nullable();
+
 export const RegisterSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('E-mail inválido'),
@@ -99,6 +107,7 @@ export const MaintenanceSchema = z.object({
   installmentValue: z.coerce.number().min(0).optional().nullable(),
   discount: z.coerce.number().min(0).optional().nullable(),
   photos: PhotosSchema,
+  thumb: ThumbSchema,
 });
 
 // Validação de Abastecimento
@@ -124,6 +133,7 @@ export const FuelRecordSchema = z.object({
   installmentValue: z.coerce.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable().or(z.literal('')),
   photos: PhotosSchema,
+  thumb: ThumbSchema,
 });
 
 // Validação de Informações da Web (Edição Manual)
@@ -224,6 +234,7 @@ export const WashRecordBaseSchema = z.object({
     .or(z.literal('')),
   notes: z.string().max(1000, 'Observações muito longas').optional().nullable().or(z.literal('')),
   photos: PhotosSchema,
+  thumb: ThumbSchema,
   clearPhoto: z.boolean().optional(),
 });
 

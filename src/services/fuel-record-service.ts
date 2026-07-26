@@ -18,6 +18,7 @@ export interface CreateFuelRecordInput {
   installmentValue?: number | null;
   notes?: string | null;
   photos?: string[] | null;
+  thumb?: string | null;
 }
 
 export class FuelRecordService {
@@ -97,10 +98,21 @@ export class FuelRecordService {
       }
     }
 
-    return prisma.fuelRecord.findMany({
-      where,
-      orderBy: { mileage: 'desc' },
-    });
+    // Fotos cheias fora da listagem; a 2a consulta só marca quem tem foto
+    const [records, comFoto] = await Promise.all([
+      prisma.fuelRecord.findMany({
+        where,
+        omit: { photoData: true },
+        orderBy: { mileage: 'desc' },
+      }),
+      prisma.fuelRecord.findMany({
+        where: { ...where, photoData: { not: null } },
+        select: { id: true },
+      }),
+    ]);
+
+    const ids = new Set(comFoto.map((r) => r.id));
+    return records.map((r) => ({ ...r, hasPhotos: ids.has(r.id) }));
   }
 
   /**
@@ -150,6 +162,7 @@ export class FuelRecordService {
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
           photoData: serializePhotos(input.photos),
+          thumbData: input.thumb ?? null,
         },
       });
 
@@ -198,7 +211,9 @@ export class FuelRecordService {
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
           // undefined = cliente não enviou fotos; mantém as existentes
-          ...(input.photos !== undefined ? { photoData: serializePhotos(input.photos) } : {}),
+          ...(input.photos !== undefined
+            ? { photoData: serializePhotos(input.photos), thumbData: input.thumb ?? null }
+            : {}),
         },
       });
 

@@ -11,6 +11,7 @@ export interface WashRecordInput {
   washType?: string | null;
   notes?: string | null;
   photos?: string[] | null;
+  thumb?: string | null;
   clearPhoto?: boolean;
 }
 
@@ -44,7 +45,7 @@ export class WashRecordService {
       startDate?: string | Date;
       endDate?: string | Date;
     }
-  ): Promise<WashRecordWithPhotos[]> {
+  ) {
     await this.verifyCarOwner(carId, userId);
 
     const where: Prisma.WashRecordWhereInput = { carId };
@@ -64,12 +65,37 @@ export class WashRecordService {
       }
     }
 
-    const records = await prisma.washRecord.findMany({
-      where,
-      orderBy: { date: 'desc' },
+    // Listagem sai sem as fotos cheias: só a miniatura viaja.
+    // A 2a consulta só traz ids, para marcar quem tem foto.
+    const [records, comFoto] = await Promise.all([
+      prisma.washRecord.findMany({
+        where,
+        omit: { photoData: true },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.washRecord.findMany({
+        where: { ...where, photoData: { not: null } },
+        select: { id: true },
+      }),
+    ]);
+
+    const ids = new Set(comFoto.map((r) => r.id));
+    return records.map((r) => ({ ...r, hasPhotos: ids.has(r.id) }));
+  }
+
+  /** Fotos cheias de uma lavagem, carregadas sob demanda pelo visualizador. */
+  static async getById(id: string, userId: string): Promise<WashRecordWithPhotos> {
+    const record = await prisma.washRecord.findUnique({
+      where: { id },
+      include: { car: true },
     });
 
-    return records.map(toClient);
+    if (!record || record.car.userId !== userId) {
+      throw new Error('Lavagem não encontrada ou acesso não autorizado.');
+    }
+
+    const { car, ...rest } = record;
+    return toClient(rest);
   }
 
   static async create(carId: string, userId: string, input: WashRecordInput): Promise<WashRecordWithPhotos> {
@@ -93,6 +119,7 @@ export class WashRecordService {
         washType: input.washType || null,
         notes: input.notes || null,
         photoData: serializePhotos(photos),
+        thumbData: input.thumb ?? null,
       },
     });
 
@@ -112,10 +139,13 @@ export class WashRecordService {
     const selfWash = input.selfWash !== undefined ? Boolean(input.selfWash) : record.selfWash;
 
     let photoData: string | null | undefined = undefined;
+    let thumbData: string | null | undefined = undefined;
     if (input.clearPhoto) {
       photoData = null;
+      thumbData = null;
     } else if (input.photos !== undefined) {
       photoData = serializePhotos(input.photos);
+      thumbData = input.thumb ?? null;
     }
 
     const updated = await prisma.washRecord.update({
@@ -132,7 +162,7 @@ export class WashRecordService {
         price: input.price !== undefined ? (input.price ?? 0) : undefined,
         washType: input.washType !== undefined ? input.washType || null : undefined,
         notes: input.notes !== undefined ? input.notes || null : undefined,
-        ...(photoData !== undefined ? { photoData } : {}),
+        ...(photoData !== undefined ? { photoData, thumbData } : {}),
       },
     });
 

@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { MaintenanceSchema } from '@/lib/validations';
 import { formatCurrency } from '@/lib/formatters';
 import { useToast } from '@/components/ui/toast';
-import { PhotoPicker } from '@/components/photo-picker';
+import { PhotoPicker, makeThumb } from '@/components/photo-picker';
 import { ArrowLeft, Loader2, Save, Wrench, Plus, Trash2, ShieldAlert, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { z } from 'zod';
@@ -142,6 +142,7 @@ export default function NewMaintenancePage() {
         ...data,
         parts, // Envia lista de peças acoplada
         photos,
+        thumb: await makeThumb(photos),
       };
 
       const res = await fetch(`/api/cars/${carId}/maintenances`, {

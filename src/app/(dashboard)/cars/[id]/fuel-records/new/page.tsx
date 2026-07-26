@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FuelRecordSchema } from '@/lib/validations';
 import { formatCurrency } from '@/lib/formatters';
-import { PhotoPicker } from '@/components/photo-picker';
+import { PhotoPicker, makeThumb } from '@/components/photo-picker';
 import { ArrowLeft, Loader2, Save, Fuel, AlertCircle, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { z } from 'zod';
@@ -162,7 +162,7 @@ export default function NewFuelRecordPage() {
       const res = await fetch(`/api/cars/${carId}/fuel-records`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, photos }),
+        body: JSON.stringify({ ...data, photos, thumb: await makeThumb(photos) }),
       });
 
       if (!res.ok) {

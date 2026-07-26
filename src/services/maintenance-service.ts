@@ -26,6 +26,7 @@ export interface CreateMaintenanceInput {
   installmentValue?: number | null;
   discount?: number | null;
   photos?: string[] | null;
+  thumb?: string | null;
 }
 
 export class MaintenanceService {
@@ -74,13 +75,24 @@ export class MaintenanceService {
       }
     }
 
-    return prisma.maintenance.findMany({
-      where,
-      include: {
-        parts: true,
-      },
-      orderBy: { date: 'desc' },
-    });
+    // As fotos cheias ficam de fora da listagem; o cliente carrega no clique.
+    // A 2a consulta só traz ids, para marcar quem tem foto (registros antigos
+    // ainda não têm miniatura gravada).
+    const [records, comFoto] = await Promise.all([
+      prisma.maintenance.findMany({
+        where,
+        omit: { photoData: true },
+        include: { parts: true },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.maintenance.findMany({
+        where: { ...where, photoData: { not: null } },
+        select: { id: true },
+      }),
+    ]);
+
+    const ids = new Set(comFoto.map((r) => r.id));
+    return records.map((r) => ({ ...r, hasPhotos: ids.has(r.id) }));
   }
 
   /**
@@ -152,6 +164,7 @@ export class MaintenanceService {
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
           photoData: serializePhotos(input.photos),
+          thumbData: input.thumb ?? null,
           parts: {
             create: partsData,
           },
@@ -232,7 +245,9 @@ export class MaintenanceService {
           installmentValue: input.installmentValue || null,
           notes: input.notes || null,
           // undefined = cliente não enviou fotos; mantém as existentes
-          ...(input.photos !== undefined ? { photoData: serializePhotos(input.photos) } : {}),
+          ...(input.photos !== undefined
+            ? { photoData: serializePhotos(input.photos), thumbData: input.thumb ?? null }
+            : {}),
           parts: {
             create: partsData,
           },

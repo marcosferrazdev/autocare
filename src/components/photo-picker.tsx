@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Camera, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, Loader2, X, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
-import { MAX_PHOTOS, TARGET_PHOTO_DATA_URL_LEN, MAX_PHOTO_DATA_URL_LEN } from '@/lib/photos';
+import {
+  MAX_PHOTOS,
+  TARGET_PHOTO_DATA_URL_LEN,
+  MAX_PHOTO_DATA_URL_LEN,
+  THUMB_MAX_SIDE,
+} from '@/lib/photos';
 
 const MAX_INPUT_IMAGE_BYTES = 12 * 1024 * 1024; // 12 MB no arquivo original
 
@@ -53,6 +58,33 @@ export async function compressImageToDataUrl(file: File): Promise<string> {
     throw new Error('Não foi possível comprimir a imagem o suficiente. Tente outra foto.');
   }
   return dataUrl;
+}
+
+/**
+ * Miniatura ~96px da primeira foto, para as listagens não carregarem as imagens
+ * cheias. Devolve null quando não há foto.
+ */
+export async function makeThumb(photos: string[] | null | undefined): Promise<string | null> {
+  const first = photos?.[0];
+  if (!first) return null;
+
+  try {
+    const img = new Image();
+    img.src = first;
+    await img.decode();
+
+    const scale = Math.min(1, THUMB_MAX_SIDE / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.6);
+  } catch (err) {
+    console.error('Falha ao gerar miniatura', err);
+    return null;
+  }
 }
 
 /**
@@ -163,19 +195,57 @@ export function PhotoPicker({
   );
 }
 
-/** Miniatura clicável que abre o visualizador. Não renderiza nada sem fotos. */
+/**
+ * Miniatura clicável que abre o visualizador. Não renderiza nada sem fotos.
+ *
+ * Nas listagens passe `thumb` + `count` + `loadPhotos`: só a miniatura viaja no
+ * payload e as imagens cheias são buscadas no clique. Passando `photos` direto,
+ * funciona sem nenhuma busca extra.
+ */
 export function PhotoThumb({
   photos,
+  thumb,
+  count,
+  hasPhotos,
+  loadPhotos,
   size = 'w-20 h-20',
   className = '',
 }: {
-  photos: string[];
+  photos?: string[];
+  thumb?: string | null;
+  count?: number;
+  /** Tem foto no banco mas sem miniatura (registro anterior às miniaturas). */
+  hasPhotos?: boolean;
+  loadPhotos?: () => Promise<string[]>;
   size?: string;
   className?: string;
 }) {
   const [gallery, setGallery] = useState<number | null>(null);
+  const [full, setFull] = useState<string[]>(photos ?? []);
+  const [loadingFull, setLoadingFull] = useState(false);
 
-  if (photos.length === 0) return null;
+  const preview = thumb || photos?.[0];
+  // Listagens mandam só a miniatura: sem contagem, vale "tem pelo menos uma"
+  const total = count ?? photos?.length ?? (preview ? 1 : 0);
+
+  if (!preview && !hasPhotos) return null;
+
+  const open = async () => {
+    setGallery(0);
+    if (full.length > 0 || !loadPhotos) return;
+    try {
+      setLoadingFull(true);
+      setFull(await loadPhotos());
+    } catch (err) {
+      console.error('Falha ao carregar fotos', err);
+    } finally {
+      setLoadingFull(false);
+    }
+  };
+
+  // Enquanto as imagens cheias não chegam, mostra a miniatura ampliada
+  const shown = full.length > 0 ? full : preview ? [preview] : [];
+  const index = Math.min(gallery ?? 0, shown.length - 1);
 
   return (
     <>
@@ -183,15 +253,19 @@ export function PhotoThumb({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setGallery(0);
+          open();
         }}
-        className={`relative ${size} rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 hover:border-cyan-400 transition-all ${className}`}
-        title={photos.length > 1 ? `Ver ${photos.length} fotos` : 'Ver foto'}
+        className={`relative ${size} rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 hover:border-cyan-400 transition-all flex items-center justify-center ${className}`}
+        title={total > 1 ? `Ver ${total} fotos` : 'Ver foto'}
       >
-        <img src={photos[0]} alt="Foto anexada" className="w-full h-full object-cover" />
-        {photos.length > 1 && (
+        {preview ? (
+          <img src={preview} alt="Foto anexada" className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon className="h-5 w-5 text-slate-400" />
+        )}
+        {preview && total > 1 && (
           <span className="absolute bottom-0.5 right-0.5 text-[9px] font-bold bg-slate-900/75 text-white px-1 py-0.5 rounded">
-            +{photos.length - 1}
+            +{total - 1}
           </span>
         )}
       </button>
@@ -212,16 +286,23 @@ export function PhotoThumb({
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 flex items-center justify-center px-4 pb-2">
+          <div className="relative flex-1 min-h-0 flex items-center justify-center px-4 pb-2">
+            {shown[index] && (
             <img
-              src={photos[gallery]}
-              alt={`Foto ${gallery + 1}`}
-              className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
+              src={shown[index]}
+              alt={`Foto ${index + 1}`}
+              className={`max-w-full max-h-full rounded-lg shadow-2xl object-contain transition-opacity ${
+                loadingFull ? 'opacity-40 blur-sm' : ''
+              }`}
               onClick={(e) => e.stopPropagation()}
             />
+            )}
+            {loadingFull && (
+              <Loader2 className="absolute h-8 w-8 animate-spin text-white/90" />
+            )}
           </div>
 
-          {photos.length > 1 ? (
+          {shown.length > 1 ? (
             <div
               className="shrink-0 flex items-center justify-center gap-4 px-4 pb-6 pt-3"
               onClick={(e) => e.stopPropagation()}
@@ -229,18 +310,18 @@ export function PhotoThumb({
               <button
                 type="button"
                 className="p-2.5 rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
-                onClick={() => setGallery((g) => ((g ?? 0) - 1 + photos.length) % photos.length)}
+                onClick={() => setGallery((g) => ((g ?? 0) - 1 + shown.length) % shown.length)}
                 title="Foto anterior"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <p className="text-xs font-semibold text-white/90 min-w-[3rem] text-center tabular-nums">
-                {gallery + 1} / {photos.length}
+                {index + 1} / {shown.length}
               </p>
               <button
                 type="button"
                 className="p-2.5 rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
-                onClick={() => setGallery((g) => ((g ?? 0) + 1) % photos.length)}
+                onClick={() => setGallery((g) => ((g ?? 0) + 1) % shown.length)}
                 title="Próxima foto"
               >
                 <ChevronRight className="h-5 w-5" />
