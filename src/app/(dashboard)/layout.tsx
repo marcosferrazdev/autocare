@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -26,6 +26,8 @@ import {
   Car,
   BarChart3,
   Monitor,
+  Package,
+  Map as MapIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -251,56 +253,149 @@ function UserMenu() {
   );
 }
 
+const DOCK_ITEM =
+  'group relative flex h-10 w-10 items-center justify-center rounded-full text-on-block-accent transition-colors hover:bg-white/15 aria-disabled:opacity-40 aria-disabled:pointer-events-none';
+
+function DockTip({ label }: { label: string }) {
+  return (
+    <span className="pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-block-ink px-2.5 py-1 text-xs font-semibold text-on-block-ink opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 max-md:bottom-full max-md:mb-2 md:left-full md:ml-3">
+      {label}
+    </span>
+  );
+}
+
 function DockButton({
   icon: Icon,
   label,
   href,
   onClick,
   disabled,
+  active,
 }: {
   icon: LucideIcon;
   label: string;
   href?: string;
   onClick?: (e: React.MouseEvent) => void;
   disabled?: boolean;
+  active?: boolean;
 }) {
-  const className =
-    'group relative flex h-10 w-10 items-center justify-center rounded-full text-on-block-accent transition-colors hover:bg-white/15 aria-disabled:opacity-40 aria-disabled:pointer-events-none';
-  const tip = (
-    <span className="pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-block-ink px-2.5 py-1 text-xs font-semibold text-on-block-ink opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 max-md:bottom-full max-md:mb-2 md:left-full md:ml-3">
-      {label}
-    </span>
-  );
+  const className = `${DOCK_ITEM} ${active ? 'bg-white/20' : ''}`;
   if (href) {
     return (
-      <Link href={href} aria-label={label} aria-disabled={disabled} tabIndex={disabled ? -1 : undefined} className={className}>
+      <Link
+        href={href}
+        aria-label={label}
+        aria-disabled={disabled}
+        aria-current={active ? 'page' : undefined}
+        tabIndex={disabled ? -1 : undefined}
+        className={className}
+      >
         <Icon className="h-[18px] w-[18px]" />
-        {tip}
+        <DockTip label={label} />
       </Link>
     );
   }
   return (
     <button type="button" aria-label={label} onClick={onClick} className={className}>
       <Icon className="h-[18px] w-[18px]" />
-      {tip}
+      <DockTip label={label} />
     </button>
   );
 }
 
-/** Dock de ações rápidas do carro selecionado: lateral no desktop, barra inferior no celular. */
+/** Botão "+" do dock: abre a lista do que dá para registrar. */
+function CreateMenu({ car }: { car: string }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismiss(open, close);
+  const pathname = usePathname();
+
+  // Fecha ao trocar de página (o item escolhido já navegou)
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setOpen(false);
+  }
+
+  const items: { icon: LucideIcon; label: string; href: string; needsCar: boolean }[] = [
+    { icon: Fuel, label: 'Abastecimento', href: `${car}/fuel-records/new`, needsCar: true },
+    { icon: Wrench, label: 'Manutenção', href: `${car}/maintenances/new`, needsCar: true },
+    { icon: Droplets, label: 'Lavagem', href: `${car}?tab=lavadas`, needsCar: true },
+    { icon: BellRing, label: 'Lembrete', href: `${car}?tab=lembretes`, needsCar: true },
+    { icon: MapIcon, label: 'Viagem', href: '/trips', needsCar: false },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="Registrar"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={`${DOCK_ITEM} ${open ? 'bg-white/20' : ''}`}
+      >
+        <Plus className={`h-[18px] w-[18px] transition-transform duration-300 ${open ? 'rotate-45' : ''}`} />
+        {!open && <DockTip label="Registrar" />}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="animate-pop-in absolute z-50 w-60 rounded-xl bg-white p-1.5 shadow-lg max-md:bottom-full max-md:left-1/2 max-md:mb-3 max-md:-translate-x-1/2 md:left-full md:top-0 md:ml-3"
+          style={{ transformOrigin: 'left top' }}
+        >
+          <p className="px-3 pb-1 pt-2 text-xs font-semibold text-slate-500">Registrar</p>
+          {items.map((item) => {
+            const disabled = item.needsCar && !car;
+            return (
+              <Link
+                key={item.label}
+                href={disabled ? '#' : item.href}
+                role="menuitem"
+                aria-disabled={disabled}
+                onClick={(e) => {
+                  if (disabled) e.preventDefault();
+                  else close();
+                }}
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 aria-disabled:pointer-events-none aria-disabled:opacity-40"
+              >
+                <item.icon className="h-4 w-4 text-slate-500" />
+                {item.label}
+              </Link>
+            );
+          })}
+          <div className="mx-2 my-1 h-px bg-slate-100" />
+          <Link
+            href="/cars/new"
+            role="menuitem"
+            onClick={close}
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Car className="h-4 w-4 text-slate-500" />
+            Veículo
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Dock de atalhos: lateral no desktop, barra inferior no celular. */
 function Dock() {
   const { selectedCarId } = useCar();
   const { theme, toggle } = useTheme();
+  const pathname = usePathname();
   const car = selectedCarId ? `/cars/${selectedCarId}` : '';
 
   return (
     <div className="fixed z-40 flex items-center gap-1 rounded-full bg-block-accent p-1.5 shadow-lg max-md:bottom-3 max-md:left-1/2 max-md:-translate-x-1/2 md:left-5 md:top-1/2 md:-translate-y-1/2 md:flex-col">
-      <DockButton icon={Fuel} label="Novo abastecimento" href={`${car}/fuel-records/new`} disabled={!car} />
-      <DockButton icon={Wrench} label="Nova manutenção" href={`${car}/maintenances/new`} disabled={!car} />
-      <DockButton icon={Droplets} label="Lavadas" href={`${car}?tab=lavadas`} disabled={!car} />
-      <DockButton icon={BellRing} label="Lembretes" href={`${car}?tab=lembretes`} disabled={!car} />
+      <DockButton icon={Fuel} label="Abastecimentos" href={`${car}?tab=abastecimentos`} disabled={!car} />
+      <DockButton icon={Wrench} label="Manutenções" href={car} disabled={!car} />
+      <DockButton icon={Package} label="Peças" href="/parts" active={pathname.startsWith('/parts')} />
+      <DockButton icon={BarChart3} label="Relatórios" href="/reports" active={pathname.startsWith('/reports')} />
       <span className="mx-1 h-6 w-px bg-white/25 md:mx-0 md:my-1 md:h-px md:w-6" aria-hidden />
-      <DockButton icon={Plus} label="Adicionar veículo" href="/cars/new" />
+      <CreateMenu car={car} />
       <DockButton icon={theme === 'dark' ? Sun : Moon} label={theme === 'dark' ? 'Tema claro' : 'Tema escuro'} onClick={(e) => toggle(e)} />
     </div>
   );
