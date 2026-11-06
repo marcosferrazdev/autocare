@@ -166,7 +166,7 @@ export default function PartsClient({
           <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900">Peças</h1>
           <p className="text-sm text-slate-500">Tudo o que já foi trocado ou feito no carro</p>
         </div>
-        <div className="-mx-1 flex min-w-0 flex-nowrap items-center gap-x-5 overflow-x-auto px-1 py-1 [scrollbar-width:none] lg:flex-1 lg:justify-center">
+        <div className="-mx-1 flex min-w-0 flex-nowrap items-center gap-x-5 overflow-x-auto px-1 py-1 [scrollbar-width:none] lg:flex-1">
           <Stat icon={Package} value={String(groups.length)} label={groups.length === 1 ? 'item no histórico' : 'itens no histórico'} />
           <Stat icon={Coins} value={formatCurrency(totalSpent)} label="Gasto em peças e serviços" />
           {mostReplaced && mostReplaced.occurrences.length > 1 && (

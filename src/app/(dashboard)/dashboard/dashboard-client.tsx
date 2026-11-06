@@ -208,7 +208,7 @@ export default function DashboardClient({
     <div className="space-y-5">
       {/* Cabeçalho: nome do carro e os três números que importam no dia a dia */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-        <div className="min-w-0 lg:max-w-[32%] lg:shrink">
+        <div className="min-w-0 lg:mr-6 lg:max-w-[32%] lg:shrink">
           <h1 className="truncate text-[34px] font-bold leading-tight tracking-tight text-slate-900">{carName}</h1>
           <p className="truncate text-sm text-slate-500">
             {data.car.brand} {data.car.model}
@@ -217,7 +217,7 @@ export default function DashboardClient({
         </div>
 
         {/* Os três números sempre numa linha; no celular a linha rola de lado */}
-        <div className="-mx-1 flex min-w-0 flex-nowrap items-center gap-x-5 overflow-x-auto px-1 py-1 [scrollbar-width:none] lg:flex-1 lg:justify-center">
+        <div className="-mx-1 flex min-w-0 flex-nowrap items-center gap-x-5 overflow-x-auto px-1 py-1 [scrollbar-width:none] lg:flex-1">
           <HeaderStat icon={Coins} value={<CountUp value={metrics.totalCarCost} format={formatCurrency} />} label="Gasto total" />
           <HeaderStat icon={Milestone} value={formatMileage(data.car.currentMileage)} label="Odômetro" />
           <HeaderStat

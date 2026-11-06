@@ -23,7 +23,6 @@ import {
   AlertCircle,
   Edit,
   Save,
-  BookOpen,
   CreditCard,
   Trash2,
   ChevronDown,
@@ -36,13 +35,16 @@ import {
   ImageIcon,
   Shield,
   Landmark,
+  Search,
 } from 'lucide-react';
+import { PART_CATEGORIES, classifyPart } from '@/lib/parts';
 
 const WASH_TYPES = ['Completa', 'Externa', 'Interna', 'Motor', 'Detalhamento', 'Outro'] as const;
 
-type CarTab = 'historico' | 'upgrades' | 'lembretes' | 'lavadas' | 'seguro' | 'financiamento';
+// 'historico' é a aba de manutenções (o id antigo fica para os links continuarem valendo)
+type CarTab = 'historico' | 'abastecimentos' | 'upgrades' | 'lembretes' | 'lavadas' | 'seguro' | 'financiamento';
 
-const CAR_TABS: CarTab[] = ['historico', 'upgrades', 'lembretes', 'lavadas', 'seguro', 'financiamento'];
+const CAR_TABS: CarTab[] = ['historico', 'abastecimentos', 'upgrades', 'lembretes', 'lavadas', 'seguro', 'financiamento'];
 
 function parseTab(value: string | null): CarTab {
   return CAR_TABS.includes(value as CarTab) ? (value as CarTab) : 'historico';
@@ -261,6 +263,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
 
   // Controle de expansão do histórico de manutenção
   const [expandedMaintenances, setExpandedMaintenances] = useState<Record<string, boolean>>({});
+  const [recordQuery, setRecordQuery] = useState('');
 
   const toggleMaintenanceExpand = (maintId: string) => {
     setExpandedMaintenances(prev => ({
@@ -704,8 +707,19 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
               : 'text-slate-600 hover:text-slate-900'
               }`}
           >
-            <BookOpen className="h-4 w-4 shrink-0" />
-            Histórico Geral
+            <Wrench className="h-4 w-4 shrink-0" />
+            Manutenções
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('abastecimentos')}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-300 shrink-0 ${activeTab === 'abastecimentos'
+              ? 'bg-block-ink text-on-block-ink'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
+          >
+            <Fuel className="h-4 w-4 shrink-0" />
+            Abastecimentos
           </button>
           <button
             type="button"
@@ -767,271 +781,258 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
 
       {/* Conteúdo das abas — título/abas fixos; rolagem nos cards (no mobile o bloco pode rolar se faltar altura) */}
       <div className="flex-1 min-h-0 touch-pan-y overflow-y-auto overscroll-y-auto lg:overflow-hidden lg:overscroll-none">
-      {activeTab === 'historico' ? (
-        /* Main Grid: Maintenances and Fuel Records Lists side-by-side */
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-auto lg:h-full min-h-0">
-          {/* Maintenances List */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col min-h-[280px] lg:h-full lg:min-h-0 lg:overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 shrink-0">
-              <div className="flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-blue-600" />
-                <h2 className="font-bold text-slate-800 text-sm">Histórico de Manutenções</h2>
-              </div>
-              <Link
-                href={`/cars/${car.id}/maintenances/new`}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
-              >
-                <Plus className="h-3.5 w-3.5" /> Adicionar
-              </Link>
+      {activeTab === 'historico' || activeTab === 'abastecimentos' ? (
+        /* Manutenções e abastecimentos: cada um na sua aba, em cards */
+        <div className="space-y-4 lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="flex flex-1 items-center gap-2 rounded-full bg-white px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
+              <Search className="h-4 w-4 shrink-0 text-slate-400" />
+              <input
+                type="search"
+                value={recordQuery}
+                onChange={(e) => setRecordQuery(e.target.value)}
+                placeholder={activeTab === 'historico' ? 'Buscar por descrição, tipo, peça ou oficina' : 'Buscar por posto, cidade ou combustível'}
+                className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              />
+            </label>
+            <Link
+              href={`/cars/${car.id}/${activeTab === 'historico' ? 'maintenances' : 'fuel-records'}/new`}
+              className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-blue-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" /> {activeTab === 'historico' ? 'Registrar manutenção' : 'Registrar abastecimento'}
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="h-44 animate-pulse rounded-xl bg-white" />
+              ))}
             </div>
-
-            {loading ? (
-              <div className="space-y-3 animate-pulse lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="py-3 flex justify-between items-center border-b border-slate-50 last:border-0 gap-3">
-                    <div className="min-w-0 space-y-2 w-full">
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-                        <div className="h-4 bg-slate-100 rounded w-16"></div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="h-3 bg-slate-100 rounded w-20"></div>
-                        <div className="h-3 bg-slate-100 rounded w-24"></div>
-                      </div>
-                    </div>
-                    <div className="h-5 bg-slate-200 rounded w-16 shrink-0"></div>
-                  </div>
-                ))}
-              </div>
-            ) : maintenances.length === 0 ? (
-              <div className="py-6 text-center text-slate-400 italic text-xs flex-1">
-                Nenhuma manutenção registrada para este carro.
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
-                {maintenances.map((m) => {
-                  const isExpanded = !!expandedMaintenances[m.id];
-                  const hasDetails = (m.parts && m.parts.length > 0) || m.notes || m.laborCost > 0;
-
-                  return (
-                    <div key={m.id} className="py-3 border-b border-slate-100 last:border-0">
-                      <div className="flex justify-between items-start text-xs gap-3">
-                        <div
-                          onClick={() => hasDetails && toggleMaintenanceExpand(m.id)}
-                          className={`min-w-0 flex gap-2.5 ${hasDetails ? 'cursor-pointer hover:opacity-85 select-none' : ''}`}
-                        >
-                          {hasDetails && (
-                            <ChevronDown
-                              className={`h-4 w-4 text-slate-400 mt-0.5 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-blue-600' : ''}`}
-                            />
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-slate-800 truncate block max-w-[200px] sm:max-w-xs">{m.description}</span>
-                              <span className="text-xxs px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase font-semibold shrink-0">
-                                {m.type}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3 text-slate-400 mt-1 flex-wrap">
-                              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(m.date)}</span>
-                              <span className="flex items-center gap-1"><Milestone className="h-3 w-3" /> {formatMileage(m.mileage)}</span>
-                              {m.workshop && <span className="truncate">Oficina: {m.workshop}</span>}
-                              <span className="flex items-center gap-1 shrink-0">
-                                <CreditCard className="h-3.5 w-3.5" />{' '}
-                                {m.paymentMethod === 'À vista' || !m.paymentMethod ? (
-                                  'À vista'
-                                ) : m.installmentCount && m.installmentValue ? (
-                                  `${m.installmentCount}x de ${formatCurrency(m.installmentValue)}`
-                                ) : (
-                                  m.paymentMethod
-                                )}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
-                          <PhotoThumb
+          ) : activeTab === 'historico' ? (
+            (() => {
+              const q = recordQuery.trim().toLowerCase();
+              const list = maintenances.filter(
+                (m) =>
+                  !q ||
+                  `${m.description} ${m.type} ${m.workshop ?? ''} ${(m.parts ?? []).map((p: { name: string; brand: string | null }) => `${p.name} ${p.brand ?? ''}`).join(' ')}`
+                    .toLowerCase()
+                    .includes(q)
+              );
+              if (maintenances.length === 0) {
+                return <EmptyRecords icon={Wrench} text="Nenhuma manutenção registrada para este carro." />;
+              }
+              if (list.length === 0) return <EmptyRecords icon={Search} text="Nenhuma manutenção encontrada com essa busca." />;
+              return (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {list.map((m, i) => {
+                    const isExpanded = !!expandedMaintenances[m.id];
+                    const hasDetails = (m.parts && m.parts.length > 0) || m.notes || m.laborCost > 0;
+                    const cat = PART_CATEGORIES.find((c) => c.id === classifyPart(m.description, m.type).category)!;
+                    const partNames = (m.parts ?? []).map((p: { name: string }) => p.name).join(', ');
+                    return (
+                      <article
+                        key={m.id}
+                        className="rise-in flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm"
+                        style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <RecordAvatar
+                            label={recordInitials(m.description)}
+                            color={cat.color}
                             thumb={m.thumbData}
                             hasPhotos={m.hasPhotos}
                             loadPhotos={() => loadPhotosFrom(`/api/maintenances/${m.id}`)}
-                            size="w-12 h-12"
                           />
-                          <div className="text-right">
-                            <span className="font-bold text-slate-800 block">{formatCurrency(m.totalCost)}</span>
-                            {m.discount && m.discount > 0 ? (
-                              <span className="text-xxs text-emerald-600 font-semibold block">
-                                -{formatCurrency(m.discount)} desc.
-                              </span>
-                            ) : null}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[15px] font-bold text-slate-900">{m.description}</p>
+                            <p className="truncate text-xs text-slate-500">
+                              {formatDate(m.date)} · {formatMileage(m.mileage)}
+                            </p>
                           </div>
-                          <div className="flex items-center gap-2 print:hidden">
+                          <span className="shrink-0 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">
+                            {formatCurrency(m.totalCost)}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          <span
+                            className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold text-slate-700"
+                            style={{ backgroundColor: `color-mix(in srgb, ${cat.color} 16%, var(--card))` }}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                            {m.type}
+                          </span>
+                          {m.discount && m.discount > 0 ? (
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                              -{formatCurrency(m.discount)} de desconto
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <InfoBox label="Peças" value={partNames || 'Só mão de obra'} />
+                          <InfoBox label="Oficina" value={m.workshop || '—'} />
+                        </div>
+
+                        <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+                          <span className="flex min-w-0 items-center gap-1.5 truncate text-xs text-slate-500">
+                            <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                            {paymentLabel(m)}
+                          </span>
+                          <div className="flex shrink-0 items-center gap-1 print:hidden">
+                            {hasDetails && (
+                              <button
+                                type="button"
+                                onClick={() => toggleMaintenanceExpand(m.id)}
+                                aria-expanded={isExpanded}
+                                className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                              >
+                                Detalhes
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                              </button>
+                            )}
                             <Link
                               href={`/cars/${car.id}/maintenances/${m.id}/edit`}
-                              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded transition-all"
+                              className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-blue-600"
                               title="Editar manutenção"
+                              aria-label="Editar manutenção"
                             >
                               <Edit className="h-3.5 w-3.5" />
                             </Link>
                             <button
+                              type="button"
                               onClick={() => handleDeleteMaintenance(m.id)}
-                              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded transition-all"
+                              className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-red-600"
                               title="Excluir manutenção"
+                              aria-label="Excluir manutenção"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Collapsible details panel */}
-                      {isExpanded && hasDetails && (
-                        <div className="mt-3 ml-6.5 p-3.5 bg-slate-50 border border-slate-100 rounded-md space-y-3 animate-fade-in text-[11px]">
-                          {/* Peças Substituídas */}
-                          {m.parts && m.parts.length > 0 ? (
-                            <div>
-                              <p className="font-bold text-slate-400 text-[9px] uppercase tracking-wider mb-2">Peças Substituídas</p>
-                              <div className="space-y-1.5 pl-1">
+                        {isExpanded && hasDetails && (
+                          <div className="animate-fade-in space-y-2.5 rounded-lg bg-slate-50 p-3 text-xs">
+                            {m.parts && m.parts.length > 0 && (
+                              <div className="space-y-1.5">
                                 {m.parts.map((p: any) => (
-                                  <div key={p.id} className="flex justify-between items-center text-slate-700">
-                                    <span>
-                                      <span className="font-bold text-slate-900">{p.quantity}x</span> {p.name}{' '}
-                                      {p.brand && <span className="text-slate-400">({p.brand})</span>}
+                                  <div key={p.id} className="flex items-center justify-between gap-2 text-slate-700">
+                                    <span className="min-w-0 truncate">
+                                      <span className="font-bold text-slate-900">{p.quantity}x</span> {p.name}
+                                      {p.brand && <span className="text-slate-400"> ({p.brand})</span>}
                                     </span>
-                                    <span className="font-medium text-slate-600">{formatCurrency(p.totalPrice)}</span>
+                                    <span className="shrink-0 font-semibold text-slate-600">{formatCurrency(p.totalPrice)}</span>
                                   </div>
                                 ))}
                               </div>
+                            )}
+                            <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 text-slate-500">
+                              <span>Mão de obra</span>
+                              <span className="font-semibold">{formatCurrency(m.laborCost)}</span>
                             </div>
-                          ) : null}
-
-                          {/* Detalhe de Custos */}
-                          <div className="flex justify-between items-center text-[10px] text-slate-500 pt-2 border-t border-slate-200/60">
-                            <span>Mão de Obra:</span>
-                            <span className="font-medium">{formatCurrency(m.laborCost)}</span>
+                            {m.notes && <p className="whitespace-pre-wrap border-t border-slate-200/60 pt-2 italic text-slate-600">{m.notes}</p>}
                           </div>
-
-                          {/* Observações */}
-                          {m.notes && (
-                            <div className="pt-2 border-t border-slate-200/60">
-                              <p className="font-bold text-slate-400 text-[9px] uppercase tracking-wider mb-1">Observações</p>
-                              <p className="text-slate-600 italic leading-relaxed whitespace-pre-wrap">{m.notes}</p>
-                            </div>
-                          )}
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          ) : (
+            (() => {
+              const q = recordQuery.trim().toLowerCase();
+              const list = fuelRecords.filter(
+                (f) => !q || `${f.gasStation ?? ''} ${f.city ?? ''} ${f.fuelType}`.toLowerCase().includes(q)
+              );
+              if (fuelRecords.length === 0) {
+                return <EmptyRecords icon={Fuel} text="Nenhum abastecimento registrado para este carro." />;
+              }
+              if (list.length === 0) return <EmptyRecords icon={Search} text="Nenhum abastecimento encontrado com essa busca." />;
+              return (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {list.map((f, i) => (
+                    <article
+                      key={f.id}
+                      className="rise-in flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm"
+                      style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <RecordAvatar
+                          icon={Fuel}
+                          color="#e39a1d"
+                          thumb={f.thumbData}
+                          hasPhotos={f.hasPhotos}
+                          loadPhotos={() => loadPhotosFrom(`/api/fuel-records/${f.id}`)}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-bold text-slate-900">
+                            {f.liters.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L de {f.fuelType}
+                          </p>
+                          <p className="truncate text-xs text-slate-500">
+                            {formatDate(f.date)} · {formatMileage(f.mileage)}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Fuel Records List */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 flex flex-col min-h-[280px] lg:h-full lg:min-h-0 lg:overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 shrink-0">
-              <div className="flex items-center gap-2">
-                <Fuel className="h-5 w-5 text-emerald-600" />
-                <h2 className="font-bold text-slate-800 text-sm">Histórico de Abastecimentos</h2>
-              </div>
-              <Link
-                href={`/cars/${car.id}/fuel-records/new`}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
-              >
-                <Plus className="h-3.5 w-3.5" /> Adicionar
-              </Link>
-            </div>
-
-            {loading ? (
-              <div className="space-y-3 animate-pulse lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="py-3 flex justify-between items-center border-b border-slate-50 last:border-0 gap-3">
-                    <div className="min-w-0 space-y-2 w-full">
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 bg-slate-200 rounded w-1/3"></div>
-                        <div className="h-4 bg-slate-100 rounded w-20"></div>
-                        <div className="h-4 bg-slate-100 rounded w-14"></div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="h-3 bg-slate-100 rounded w-20"></div>
-                        <div className="h-3 bg-slate-100 rounded w-24"></div>
-                      </div>
-                    </div>
-                    <div className="h-5 bg-slate-200 rounded w-16 shrink-0"></div>
-                  </div>
-                ))}
-              </div>
-            ) : fuelRecords.length === 0 ? (
-              <div className="py-6 text-center text-slate-400 italic text-xs flex-1">
-                Nenhum abastecimento registrado para este carro.
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
-                {fuelRecords.map((f) => (
-                  <div key={f.id} className="py-3 flex justify-between items-start text-xs gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">
-                          {f.liters.toFixed(2)} L de {f.fuelType}
+                        <span className="shrink-0 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">
+                          {formatCurrency(f.totalPrice)}
                         </span>
-                        {f.fullTank && (
-                          <span className="text-xxs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100 font-semibold">
-                            Tanque Cheio
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {f.fullTank ? (
+                          <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" /> Tanque cheio
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Parcial
                           </span>
                         )}
                         {f.consumptionKmPerLiter && (
-                          <span className="text-xxs px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100 font-bold">
+                          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
                             {formatConsumption(f.consumptionKmPerLiter)}
                             {f.consumptionEstimated && ' (estimado)'}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-slate-400 mt-1 flex-wrap">
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(f.date)}</span>
-                        <span className="flex items-center gap-1"><Milestone className="h-3 w-3" /> {formatMileage(f.mileage)}</span>
-                        {f.gasStation && <span className="truncate">{f.gasStation}</span>}
-                        <span className="flex items-center gap-1 shrink-0">
-                          <CreditCard className="h-3.5 w-3.5" />{' '}
-                          {f.paymentMethod === 'À vista' || !f.paymentMethod ? (
-                            'À vista'
-                          ) : f.installmentCount && f.installmentValue ? (
-                            `${f.installmentCount}x de ${formatCurrency(f.installmentValue)}`
-                          ) : (
-                            f.paymentMethod
-                          )}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <InfoBox label="Posto" value={[f.gasStation, f.city].filter(Boolean).join(' · ') || '—'} />
+                        <InfoBox label="Preço por litro" value={formatCurrency(f.pricePerLiter)} />
+                      </div>
+
+                      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+                        <span className="flex min-w-0 items-center gap-1.5 truncate text-xs text-slate-500">
+                          <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                          {paymentLabel(f)}
                         </span>
+                        <div className="flex shrink-0 items-center gap-1 print:hidden">
+                          <Link
+                            href={`/cars/${car.id}/fuel-records/${f.id}/edit`}
+                            className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-blue-600"
+                            title="Editar abastecimento"
+                            aria-label="Editar abastecimento"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFuelRecord(f.id)}
+                            className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-red-600"
+                            title="Excluir abastecimento"
+                            aria-label="Excluir abastecimento"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <PhotoThumb
-                        thumb={f.thumbData}
-                        hasPhotos={f.hasPhotos}
-                        loadPhotos={() => loadPhotosFrom(`/api/fuel-records/${f.id}`)}
-                        size="w-12 h-12"
-                      />
-                      <span className="font-bold text-slate-800 block">{formatCurrency(f.totalPrice)}</span>
-                      <div className="flex items-center gap-2 print:hidden">
-                        <Link
-                          href={`/cars/${car.id}/fuel-records/${f.id}/edit`}
-                          className="p-1 hover:bg-slate-100 text-slate-400 hover:text-emerald-600 rounded transition-all"
-                          title="Editar abastecimento"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteFuelRecord(f.id)}
-                          className="p-1 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded transition-all"
-                          title="Excluir abastecimento"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                    </article>
+                  ))}
+                </div>
+              );
+            })()
+          )}
         </div>
       ) : activeTab === 'lembretes' ? (
         /* Lembretes de Manutenção Tab View */
@@ -1647,6 +1648,74 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
         </div>
       )}
 
+    </div>
+  );
+}
+
+/** "À vista" ou "3x de R$ 62,67", igual para manutenção e abastecimento. */
+function paymentLabel(r: { paymentMethod?: string | null; installmentCount?: number | null; installmentValue?: number | null }) {
+  if (r.paymentMethod === 'À vista' || !r.paymentMethod) return 'À vista';
+  if (r.installmentCount && r.installmentValue) return `${r.installmentCount}x de ${formatCurrency(r.installmentValue)}`;
+  return r.paymentMethod;
+}
+
+function recordInitials(text: string) {
+  const words = text.split(/\s+/).filter((w) => w.length > 2);
+  return (words.length > 0 ? words : text.split(/\s+/))
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+/** Foto do registro quando houver; senão, círculo na cor da categoria com iniciais ou ícone. */
+function RecordAvatar({
+  label,
+  icon: Icon,
+  color,
+  thumb,
+  hasPhotos,
+  loadPhotos,
+}: {
+  label?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  color: string;
+  thumb: string | null | undefined;
+  hasPhotos: boolean | undefined;
+  loadPhotos: () => Promise<string[]>;
+}) {
+  if (thumb || hasPhotos) {
+    return (
+      <span className="shrink-0 overflow-hidden rounded-full">
+        <PhotoThumb thumb={thumb ?? null} hasPhotos={!!hasPhotos} loadPhotos={loadPhotos} size="w-11 h-11" />
+      </span>
+    );
+  }
+  return (
+    <span
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+      style={{ backgroundColor: `color-mix(in srgb, ${color} 20%, var(--card))`, color: `color-mix(in srgb, ${color} 75%, var(--ink))` }}
+    >
+      {Icon ? <Icon className="h-5 w-5" /> : label}
+    </span>
+  );
+}
+
+function InfoBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg bg-slate-50 px-3 py-2">
+      <p className="text-[11px] text-slate-500">{label}</p>
+      <p className="truncate text-[13px] font-semibold text-slate-800" title={value}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function EmptyRecords({ icon: Icon, text }: { icon: React.ComponentType<{ className?: string }>; text: string }) {
+  return (
+    <div className="rounded-xl bg-white p-10 text-center shadow-sm">
+      <Icon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+      <p className="text-sm text-slate-500">{text}</p>
     </div>
   );
 }
