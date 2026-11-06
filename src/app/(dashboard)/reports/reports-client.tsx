@@ -17,7 +17,19 @@ import {
   User,
   Shield,
   Landmark,
+  Coins,
+  TrendingUp,
+  type LucideIcon,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { CountUp } from '@/components/ui/count-up';
+import { SERIES } from '@/lib/chart-colors';
+
+// recharts sai do bundle inicial da rota, como no dashboard
+const TrendChart = dynamic(() => import('@/components/dashboard-charts').then((m) => m.TrendChart), {
+  ssr: false,
+  loading: () => <div className="h-full w-full animate-pulse rounded-md bg-slate-50" />,
+});
 
 interface MaintenancePartLog {
   id: string;
@@ -121,6 +133,145 @@ function claimCost(c: InsuranceClaimLog): number {
   return 0;
 }
 
+const MAINTENANCE_TYPES = [
+  'Preventiva',
+  'Corretiva',
+  'Troca de óleo',
+  'Freios',
+  'Suspensão',
+  'Motor',
+  'Elétrica',
+  'Pneus',
+  'Arrefecimento',
+  'Correia dentada',
+  'Bateria',
+  'Alinhamento e balanceamento',
+  'Calibragem de pneu',
+  'Outro',
+];
+
+type PeriodId = '30d' | '90d' | '12m' | 'all' | 'custom';
+
+const PERIODS: { id: Exclude<PeriodId, 'custom'>; label: string; days: number | null }[] = [
+  { id: '30d', label: '30D', days: 30 },
+  { id: '90d', label: '90D', days: 90 },
+  { id: '12m', label: '12M', days: 365 },
+  { id: 'all', label: 'Tudo', days: null },
+];
+
+type MetricId = 'total' | 'fuel' | 'maintenance' | 'consumption';
+
+interface MetricDef {
+  label: string;
+  tile: string;
+  color: string;
+  value: number;
+  format: (v: number) => string;
+  tickFormat: (v: number) => string;
+  series: { label: string; value: number }[];
+  /** gastos: cair é bom; consumo (km/L): subir é bom */
+  lowerIsBetter: boolean;
+  unit: string;
+}
+
+interface MonthBucket {
+  key: string;
+  label: string;
+  fuel: number;
+  maintenance: number;
+  wash: number;
+  insurance: number;
+  financing: number;
+  total: number;
+}
+
+/** Data local (AAAA-MM-DD) de N dias atrás, no formato do <input type="date">. */
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  const name = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+  return `${name}/${String(y).slice(2)}`;
+}
+
+/** Chaves AAAA-MM de cada mês civil entre start e end, inclusive. */
+function monthsBetween(start: Date, end: Date): string[] {
+  const keys: string[] = [];
+  const d = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (d <= end) {
+    keys.push(monthKey(d));
+    d.setMonth(d.getMonth() + 1);
+  }
+  return keys;
+}
+
+/** Rótulo curto de eixo: 1.200 → "1,2 mil", 850 → "850". */
+function compactCurrency(v: number): string {
+  return v >= 1000 ? `${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : `${Math.round(v)}`;
+}
+
+/**
+ * Variação % do último ponto com movimento contra o anterior (null sem base).
+ * Meses finais zerados (o mês corrente ainda sem gasto) ficam fora da comparação.
+ */
+function seriesDelta(series: { value: number }[]): number | null {
+  let end = series.length;
+  while (end > 0 && series[end - 1].value === 0) end--;
+  if (end < 2) return null;
+  const prev = series[end - 2].value;
+  const last = series[end - 1].value;
+  if (prev <= 0) return null;
+  return ((last - prev) / prev) * 100;
+}
+
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  if (values.length < 2) return null;
+  const w = 96;
+  const h = 32;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || 1;
+  const points = values
+    .map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - 3 - ((v - min) / span) * (h - 6)).toFixed(1)}`)
+    .join(' ');
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-8 w-24 shrink-0" aria-hidden>
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        pathLength={1}
+        className="spark-draw"
+      />
+    </svg>
+  );
+}
+
+function HeaderStat({ icon: Icon, value, label }: { icon: LucideIcon; value: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm">
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="leading-tight">
+        <span className="block text-xl font-bold tracking-tight text-slate-900">{value}</span>
+        <span className="block text-xs text-slate-500">{label}</span>
+      </span>
+    </div>
+  );
+}
+
 export interface ReportsInitialData {
   carId: string | null;
   maintenances: MaintenanceLog[];
@@ -148,6 +299,9 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
   const [maintTypeFilter, setMaintTypeFilter] = useState('');
   const [fuelTypeFilter, setFuelTypeFilter] = useState('');
   const [washTypeFilter, setWashTypeFilter] = useState('');
+  const [period, setPeriod] = useState<PeriodId>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [metric, setMetric] = useState<MetricId>('total');
 
   // Linhas de manutenção expandidas (detalhe de peças)
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -315,6 +469,133 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
     .sort((a, b) => b.value - a.value);
   const maxTypeCost = costByType[0]?.value || 1;
 
+  // Série mensal por categoria, do início do período (ou do 1º registro) até o fim (ou hoje)
+  const now = new Date();
+  const recordTimes = [
+    ...maintenances.map((m) => m.date),
+    ...fuelRecords.map((f) => f.date),
+    ...washRecords.map((w) => w.date),
+    ...filteredClaims.map((c) => c.date),
+  ].map((d) => new Date(d).getTime());
+  const seriesStart = filterStart ?? (recordTimes.length > 0 ? new Date(Math.min(...recordTimes)) : null);
+  const seriesEnd = filterEnd && filterEnd < now ? filterEnd : now;
+  const buckets = new Map<string, MonthBucket>(
+    (seriesStart ? monthsBetween(seriesStart, seriesEnd) : []).map((key) => [
+      key,
+      { key, label: monthLabel(key), fuel: 0, maintenance: 0, wash: 0, insurance: 0, financing: 0, total: 0 },
+    ])
+  );
+  const addTo = (date: string | Date, field: Exclude<keyof MonthBucket, 'key' | 'label' | 'total'>, value: number) => {
+    const bucket = buckets.get(monthKey(new Date(date)));
+    if (bucket) bucket[field] += value;
+  };
+  fuelRecords.forEach((f) => addTo(f.date, 'fuel', f.totalPrice));
+  maintenances.forEach((m) => addTo(m.date, 'maintenance', m.totalCost));
+  washRecords.forEach((w) => addTo(w.date, 'wash', w.price || 0));
+  filteredClaims.forEach((c) => addTo(c.date, 'insurance', claimCost(c)));
+  if (insurancePolicy && monthlyPremium > 0) {
+    const start = new Date(insurancePolicy.startDate || insurancePolicy.createdAt || now);
+    const end = insurancePolicy.endDate && new Date(insurancePolicy.endDate) < now ? new Date(insurancePolicy.endDate) : now;
+    monthsBetween(start, end).forEach((key) => addTo(`${key}-15T12:00:00`, 'insurance', monthlyPremium));
+  }
+  financingBreakdown.forEach((f) => {
+    if (!(f.installmentValue > 0 && f.installmentCount > 0)) return;
+    const start = new Date(f.firstInstallmentDate || f.createdAt || now);
+    const last = new Date(start);
+    last.setMonth(last.getMonth() + f.installmentCount - 1);
+    monthsBetween(start, last < now ? last : now).forEach((key) => addTo(`${key}-15T12:00:00`, 'financing', f.netInstallment));
+  });
+  const months = [...buckets.values()].map((b) => ({
+    ...b,
+    total: b.fuel + b.maintenance + b.wash + b.insurance + b.financing,
+  }));
+
+  const consumptionSeries = [...fuelRecords]
+    .filter((f) => f.consumptionKmPerLiter != null)
+    .sort((a, b) => a.mileage - b.mileage)
+    .map((f) => ({ label: formatDate(f.date).slice(0, 5), value: f.consumptionKmPerLiter as number }));
+
+  const metrics: Record<MetricId, MetricDef> = {
+    total: {
+      label: 'Gasto total',
+      tile: 'bg-emerald-100',
+      color: '#12a06a',
+      value: totalSpent,
+      format: formatCurrency,
+      tickFormat: compactCurrency,
+      series: months.map((m) => ({ label: m.label, value: m.total })),
+      lowerIsBetter: true,
+      unit: 'por mês',
+    },
+    fuel: {
+      label: 'Combustível',
+      tile: 'bg-amber-100',
+      color: SERIES.fuel,
+      value: totalFuelCost,
+      format: formatCurrency,
+      tickFormat: compactCurrency,
+      series: months.map((m) => ({ label: m.label, value: m.fuel })),
+      lowerIsBetter: true,
+      unit: 'por mês',
+    },
+    maintenance: {
+      label: 'Manutenção',
+      tile: 'bg-blue-100',
+      color: SERIES.maintenance,
+      value: totalMaintCost,
+      format: formatCurrency,
+      tickFormat: compactCurrency,
+      series: months.map((m) => ({ label: m.label, value: m.maintenance })),
+      lowerIsBetter: true,
+      unit: 'por mês',
+    },
+    consumption: {
+      label: 'Consumo',
+      tile: 'bg-tile-teal',
+      color: '#14a3a8',
+      value: avgConsumption?.value ?? 0,
+      format: (v) => formatConsumption(v),
+      tickFormat: (v) => `${Math.round(v)}`,
+      series: consumptionSeries,
+      lowerIsBetter: false,
+      unit: 'por abastecimento',
+    },
+  };
+  const active = metrics[metric];
+  const activeAverage =
+    active.series.length > 0 ? active.series.reduce((sum, p) => sum + p.value, 0) / active.series.length : 0;
+
+  const categories = [
+    { name: 'Combustível', value: totalFuelCost, color: SERIES.fuel },
+    { name: 'Manutenção', value: totalMaintCost, color: SERIES.maintenance },
+    { name: 'Lavagens', value: totalWashCost, color: SERIES.wash },
+    { name: 'Seguro', value: totalInsuranceCost, color: SERIES.insurance },
+    { name: 'Financiamento', value: totalFinancingCost, color: '#6b737d' },
+  ]
+    .filter((c) => c.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const maxCategory = categories[0]?.value || 1;
+
+  const heatRows = (
+    [
+      ['fuel', 'Combustível', SERIES.fuel],
+      ['maintenance', 'Manutenção', SERIES.maintenance],
+      ['wash', 'Lavagens', SERIES.wash],
+      ['insurance', 'Seguro', SERIES.insurance],
+      ['financing', 'Financiamento', '#6b737d'],
+    ] as const
+  ).filter(([field]) => months.some((m) => m[field] > 0));
+  const heatMonths = months.slice(-12);
+  const heatMax = Math.max(1, ...heatMonths.flatMap((m) => heatRows.map(([field]) => m[field])));
+
+  const selectPeriod = (id: PeriodId) => {
+    setPeriod(id);
+    const preset = PERIODS.find((p) => p.id === id);
+    setEndDate('');
+    setStartDate(preset?.days ? isoDaysAgo(preset.days) : '');
+  };
+  const extraFilters = [maintTypeFilter, fuelTypeFilter, washTypeFilter].filter(Boolean).length;
+
   const handlePrint = () => {
     window.print();
   };
@@ -340,20 +621,57 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
   }
 
   return (
-    <div className="space-y-6 print:p-0">
-      {/* Title & Actions */}
-      <div className="flex items-center justify-between print:hidden">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Relatórios de Custos</h1>
-          <p className="text-slate-500 text-sm">Filtre, analise e imprima o extrato do seu veículo.</p>
+    <div className="space-y-5 print:p-0">
+      {/* Título, números do período e ações */}
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center print:hidden">
+        <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 xl:mr-4">Relatórios</h1>
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 xl:flex-1">
+          <HeaderStat icon={Coins} value={<CountUp value={totalSpent} format={formatCurrency} />} label="Gasto no período" />
+          <HeaderStat
+            icon={TrendingUp}
+            value={costPerKm > 0 ? `${formatCurrency(costPerKm)}/km` : '—'}
+            label={kmDriven > 0 ? `em ${formatMileage(kmDriven)} rodados` : 'Custo por km'}
+          />
         </div>
 
-        <button
-          onClick={handlePrint}
-          className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-4 py-2.5 rounded-md text-xs transition-all shadow-sm flex items-center gap-1.5"
-        >
-          <Printer className="h-4 w-4" /> Imprimir Relatório
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-full bg-white p-1 shadow-sm" role="group" aria-label="Período">
+            {PERIODS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={period === p.id}
+                onClick={() => selectPeriod(p.id)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-300 ${
+                  period === p.id ? 'bg-block-ink text-on-block-ink' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((o) => !o)}
+            aria-expanded={filtersOpen}
+            className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold shadow-sm transition-colors ${
+              filtersOpen || period === 'custom' || extraFilters > 0
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-white text-slate-800 hover:bg-slate-50'
+            }`}
+          >
+            <Filter className="h-4 w-4" /> Filtros
+            {extraFilters > 0 && <span className="rounded-full bg-white/25 px-1.5 text-xs">{extraFilters}</span>}
+          </button>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+          >
+            <Printer className="h-4 w-4" /> Imprimir
+          </button>
+        </div>
       </div>
 
       {/* Printable Header */}
@@ -365,98 +683,80 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
         <p className="text-xs text-slate-400 mt-0.5">Gerado em: {new Date().toLocaleDateString('pt-BR')}</p>
       </div>
 
-      {/* Filters Panel */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-4 print:hidden">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-          <Filter className="h-4.5 w-4.5 text-blue-600" />
-          <h2 className="font-bold text-slate-800 text-sm">Filtros Avançados</h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-xs font-semibold text-slate-700">
-          {/* Data Inicial */}
-          <div>
-            <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Data Inicial</label>
+      {/* Filtros avançados: abrem pelo botão Filtros */}
+      {filtersOpen && (
+        <div className="animate-pop-in grid grid-cols-1 gap-4 rounded-xl bg-white p-5 text-xs font-semibold text-slate-700 shadow-sm sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 print:hidden">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-500">De</span>
             <input
               type="date"
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              className="w-full rounded-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPeriod('custom');
+              }}
             />
-          </div>
-
-          {/* Data Final */}
-          <div>
-            <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Data Final</label>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-500">Até</span>
             <input
               type="date"
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900"
+              className="w-full rounded-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPeriod('custom');
+              }}
             />
-          </div>
-
-          {/* Categoria de Manutenção */}
-          <div>
-            <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Tipo de Manutenção</label>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-500">Tipo de manutenção</span>
             <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
+              className="w-full cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
               value={maintTypeFilter}
               onChange={(e) => setMaintTypeFilter(e.target.value)}
             >
               <option value="">Todas</option>
-              <option value="Preventiva">Preventiva</option>
-              <option value="Corretiva">Corretiva</option>
-              <option value="Troca de óleo">Troca de óleo</option>
-              <option value="Freios">Freios</option>
-              <option value="Suspensão">Suspensão</option>
-              <option value="Motor">Motor</option>
-              <option value="Elétrica">Elétrica</option>
-              <option value="Pneus">Pneus</option>
-              <option value="Arrefecimento">Arrefecimento</option>
-              <option value="Correia dentada">Correia dentada</option>
-              <option value="Bateria">Bateria</option>
-              <option value="Alinhamento e balanceamento">Alinhamento e balanceamento</option>
-              <option value="Calibragem de pneu">Calibragem de pneu</option>
-              <option value="Outro">Outro</option>
+              {MAINTENANCE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
-          </div>
-
-          {/* Tipo de Combustível */}
-          <div>
-            <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Combustível</label>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-500">Combustível</span>
             <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
+              className="w-full cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
               value={fuelTypeFilter}
               onChange={(e) => setFuelTypeFilter(e.target.value)}
             >
               <option value="">Todos</option>
-              <option value="Gasolina">Gasolina</option>
-              <option value="Etanol">Etanol</option>
-              <option value="Diesel">Diesel</option>
-              <option value="GNV">GNV</option>
-              <option value="Flex">Flex</option>
+              {['Gasolina', 'Etanol', 'Diesel', 'GNV', 'Flex'].map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
-          </div>
-
-          {/* Tipo de Lavagem */}
-          <div>
-            <label className="block text-slate-500 mb-1.5 uppercase tracking-wider text-xxs font-bold">Lavagem</label>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-500">Lavagem</span>
             <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
+              className="w-full cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
               value={washTypeFilter}
               onChange={(e) => setWashTypeFilter(e.target.value)}
             >
               <option value="">Todas</option>
-              <option value="Completa">Completa</option>
-              <option value="Externa">Externa</option>
-              <option value="Interna">Interna</option>
-              <option value="Motor">Motor</option>
-              <option value="Detalhamento">Detalhamento</option>
-              <option value="Outro">Outro</option>
+              {['Completa', 'Externa', 'Interna', 'Motor', 'Detalhamento', 'Outro'].map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
-          </div>
+          </label>
         </div>
-      </div>
+      )}
 
       {error && (
         <div className="p-4 bg-red-50 text-red-700 border border-red-100 rounded-md flex items-center gap-3 text-sm">
@@ -465,98 +765,209 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
         </div>
       )}
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-        {/* Total Gasto */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Total Gasto Filtrado</p>
-          {loading ? (
-            <div className="h-6 bg-slate-100 rounded w-2/3 mt-1.5 animate-pulse"></div>
-          ) : (
-            <p className="text-lg font-bold text-slate-800 mt-1">{formatCurrency(totalSpent)}</p>
-          )}
-          <div className="mt-2 text-slate-400 text-xxs flex flex-wrap gap-x-3 gap-y-0.5">
-            {loading ? (
-              <>
-                <div className="h-3 bg-slate-100 rounded w-1/4 animate-pulse"></div>
-                <div className="h-3 bg-slate-100 rounded w-1/4 animate-pulse"></div>
-                <div className="h-3 bg-slate-100 rounded w-1/4 animate-pulse"></div>
-              </>
-            ) : (
-              <>
-                <span>Manut: {formatCurrency(totalMaintCost)}</span>
-                <span>Comb: {formatCurrency(totalFuelCost)}</span>
-                <span>Lav: {formatCurrency(totalWashCost)}</span>
-                <span>Seg: {formatCurrency(totalInsuranceCost)}</span>
-                <span>Fin: {formatCurrency(totalFinancingCost)}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Distância */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Distância no Período</p>
-          {loading ? (
-            <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
-          ) : (
-            <p className="text-lg font-bold text-slate-800 mt-1">{kmDriven > 0 ? `${formatMileage(kmDriven)}` : '0 km'}</p>
-          )}
-          <p className="text-slate-400 text-xxs mt-2">Diferença de km do período</p>
-        </div>
-
-        {/* Consumo */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Consumo Médio</p>
-          {loading ? (
-            <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
-          ) : (
-            <p className="text-lg font-bold text-slate-800 mt-1">{avgConsumption ? formatConsumption(avgConsumption.value) : '-'}</p>
-          )}
-          <p className="text-slate-400 text-xxs mt-2">{avgConsumption?.estimated ? 'Estimado (sem tanque cheio)' : 'Média entre tanques cheios'}</p>
-        </div>
-
-        {/* Custo/KM */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xxs font-bold text-slate-400 uppercase tracking-wider">Custo por KM Rodado</p>
-          {loading ? (
-            <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
-          ) : (
-            <p className="text-lg font-bold text-slate-800 mt-1">{costPerKm > 0 ? `${formatCurrency(costPerKm)}/km` : '-'}</p>
-          )}
-          <p className="text-slate-400 text-xxs mt-2">Total gasto / distância rodada</p>
-        </div>
+      {/* Cards coloridos: clicar escolhe o que o gráfico grande mostra */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 print:hidden">
+        {(Object.keys(metrics) as MetricId[]).map((id) => {
+          const m = metrics[id];
+          const delta = seriesDelta(m.series);
+          const good = delta !== null && (m.lowerIsBetter ? delta < 0 : delta > 0);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={metric === id}
+              onClick={() => setMetric(id)}
+              className={`flex flex-col gap-3 rounded-xl p-4 text-left text-slate-900 ring-2 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 ${m.tile} ${
+                metric === id ? 'ring-slate-900' : 'ring-transparent'
+              }`}
+            >
+              <span className="text-sm font-semibold text-slate-700">{m.label}</span>
+              <span className="text-2xl font-bold tracking-tight">
+                {loading ? '…' : m.value > 0 ? <CountUp value={m.value} format={m.format} /> : '—'}
+              </span>
+              <span className="flex items-end justify-between gap-2">
+                <span className="flex items-center gap-2 text-xs text-slate-600">
+                  {delta !== null && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-semibold ${
+                        good ? 'bg-emerald-600/15 text-emerald-800' : 'bg-red-600/15 text-red-700'
+                      }`}
+                    >
+                      {delta > 0 ? '↑' : '↓'} {Math.abs(delta).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+                    </span>
+                  )}
+                  {delta !== null ? (id === 'consumption' ? 'vs anterior' : 'vs mês anterior') : m.unit}
+                </span>
+                <Sparkline values={m.series.map((p) => p.value)} color={m.color} />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Resumo por tipo de manutenção */}
-      {!loading && costByType.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-lg p-6">
-          <h2 className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-[0.15em] mb-5">
-            Onde o dinheiro foi — por tipo de manutenção
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-3.5">
-            {costByType.map((entry) => (
-              <div key={entry.type}>
-                <div className="flex items-baseline justify-between gap-3 mb-1">
-                  <span className="text-xs font-medium text-slate-600 truncate">{entry.type}</span>
-                  <span className="text-xs font-bold text-slate-900 shrink-0">
-                    {formatCurrency(entry.value)}
-                    <span className="text-slate-400 font-medium ml-1.5">
-                      {totalMaintCost > 0 ? `${Math.round((entry.value / totalMaintCost) * 100)}%` : ''}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 print:hidden">
+        {/* Gráfico grande da métrica escolhida */}
+        <section className="flex min-h-[400px] flex-col rounded-xl bg-white p-6 shadow-sm lg:col-span-8">
+          <div>
+            <h2 className="text-[17px] font-bold text-slate-900">{active.label}</h2>
+            <p className="text-xs text-slate-500">{active.unit}, com a média do período tracejada</p>
+          </div>
+          <p className="mt-3 flex flex-wrap items-baseline gap-x-2">
+            <span className="text-[34px] font-bold leading-none tracking-tight text-slate-900">
+              {active.value > 0 ? <CountUp key={metric} value={active.value} format={active.format} /> : '—'}
+            </span>
+            {activeAverage > 0 && (
+              <span className="text-sm text-slate-500">média de {active.format(activeAverage)} {active.unit}</span>
+            )}
+          </p>
+          <div className="mt-4 min-h-0 flex-1">
+            {active.series.length > 1 ? (
+              <TrendChart
+                key={metric}
+                data={active.series}
+                name={active.label}
+                color={active.color}
+                format={active.format}
+                tickFormat={active.tickFormat}
+                average={activeAverage}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-center text-sm text-slate-500">
+                Poucos registros neste período para desenhar a evolução.
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Por categoria: barras grossas, uma cor por categoria */}
+        <section className="flex flex-col rounded-xl bg-white p-6 shadow-sm lg:col-span-4">
+          <h2 className="text-[17px] font-bold text-slate-900">Por categoria</h2>
+          <p className="text-xs text-slate-500">Para onde foi o dinheiro no período</p>
+          <div className="mt-5 flex-1 space-y-3.5">
+            {categories.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">Nenhum gasto neste período.</p>
+            ) : (
+              categories.map((c, i) => (
+                <div key={c.name} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-3">
+                  <span className="flex items-center gap-2 truncate text-sm font-semibold text-slate-700">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                    {c.name}
+                  </span>
+                  <span className="h-7 overflow-hidden rounded-md bg-slate-100">
+                    <span
+                      className="grow-x block h-full rounded-md"
+                      style={{
+                        width: `${Math.max(3, (c.value / maxCategory) * 100)}%`,
+                        backgroundColor: c.color,
+                        animationDelay: `${150 + i * 80}ms`,
+                      }}
+                    />
+                  </span>
+                  <span className="text-sm font-bold text-slate-900">{formatCurrency(c.value)}</span>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-slate-50 p-3.5">
+              <p className="text-xs text-slate-500">Distância</p>
+              <p className="mt-0.5 text-lg font-bold text-slate-900">{kmDriven > 0 ? formatMileage(kmDriven) : '—'}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3.5">
+              <p className="text-xs text-slate-500">{avgConsumption?.estimated ? 'Consumo estimado' : 'Consumo médio'}</p>
+              <p className="mt-0.5 text-lg font-bold text-slate-900">
+                {avgConsumption ? formatConsumption(avgConsumption.value) : '—'}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Manutenção por tipo */}
+        <section className="rounded-xl bg-white p-6 shadow-sm lg:col-span-5">
+          <h2 className="text-[17px] font-bold text-slate-900">Manutenção por tipo</h2>
+          <p className="text-xs text-slate-500">Onde o dinheiro da oficina foi parar</p>
+          <div className="mt-5 space-y-4">
+            {costByType.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">Nenhuma manutenção neste período.</p>
+            ) : (
+              costByType.map((entry, i) => (
+                <div key={entry.type} className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                    <Wrench className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-sm font-semibold text-slate-800">{entry.type}</span>
+                      <span className="shrink-0 text-sm font-bold text-slate-900">{formatCurrency(entry.value)}</span>
+                    </span>
+                    <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-100">
+                      <span
+                        className="grow-x block h-full rounded-full"
+                        style={{
+                          width: `${Math.max(2, (entry.value / maxTypeCost) * 100)}%`,
+                          backgroundColor: SERIES.maintenance,
+                          animationDelay: `${200 + i * 70}ms`,
+                        }}
+                      />
                     </span>
                   </span>
                 </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[#2a78d6]"
-                    style={{ width: `${Math.max(2, (entry.value / maxTypeCost) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        </div>
-      )}
+        </section>
+
+        {/* Mapa de gastos: categoria × mês, cor mais forte onde se gastou mais */}
+        <section className="rounded-xl bg-white p-6 shadow-sm lg:col-span-7">
+          <h2 className="text-[17px] font-bold text-slate-900">Mapa de gastos</h2>
+          <p className="text-xs text-slate-500">Cada quadrado é um mês; quanto mais forte, mais se gastou</p>
+          {heatRows.length === 0 || heatMonths.length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate-500">Nenhum gasto neste período.</p>
+          ) : (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full border-separate border-spacing-1.5 text-xs">
+                <thead>
+                  <tr>
+                    <th />
+                    {heatMonths.map((m) => (
+                      <th key={m.key} scope="col" className="pb-1 text-center font-semibold text-slate-500">
+                        {m.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {heatRows.map(([field, name, color], row) => (
+                    <tr key={field}>
+                      <th scope="row" className="whitespace-nowrap pr-2 text-left font-semibold text-slate-600">
+                        {name}
+                      </th>
+                      {heatMonths.map((m, col) => {
+                        const value = m[field];
+                        const strength = value > 0 ? 18 + Math.round((value / heatMax) * 82) : 0;
+                        return (
+                          <td
+                            key={m.key}
+                            title={`${m.label} · ${name}: ${formatCurrency(value)}`}
+                            className="animate-fade-in h-9 min-w-9 rounded-md"
+                            style={{
+                              backgroundColor: value > 0 ? `color-mix(in srgb, ${color} ${strength}%, var(--card))` : 'var(--s100)',
+                              animationDelay: `${(row * heatMonths.length + col) * 12}ms`,
+                              animationFillMode: 'both',
+                            }}
+                          >
+                            <span className="sr-only">{formatCurrency(value)}</span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
 
       <div className="space-y-8">
         {/* Maintenances Extrato */}

@@ -1,95 +1,331 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { CarProvider, useCar } from '@/components/providers/car-provider';
 import { ToastProvider } from '@/components/ui/toast';
 import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 import { RodaNexoIcon } from '@/components/logo';
+import { useMounted, useTheme, type ThemeMode } from '@/lib/theme';
+import { formatMileage } from '@/lib/formatters';
 import {
-  Car,
-  LayoutDashboard,
-  BarChart3,
-  Map,
-  LogOut,
-  Menu,
-  X,
-  ChevronsLeft,
   ChevronDown,
-  BookOpen,
-  ListTodo,
+  Check,
+  Fuel,
+  Wrench,
   Droplets,
   BellRing,
-  Shield,
-  Landmark,
+  Plus,
+  Moon,
+  Sun,
+  LogOut,
+  Car,
+  BarChart3,
+  Monitor,
   type LucideIcon,
 } from 'lucide-react';
 
-const SIDEBAR_COLLAPSED_KEY = 'rodanexo_sidebar_collapsed';
-const SIDEBAR_TRANSITION = 'duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]';
-
-type CarTab = 'historico' | 'upgrades' | 'lavadas' | 'seguro' | 'financiamento' | 'lembretes';
-
-const CAR_TABS: { id: CarTab; name: string; icon: LucideIcon }[] = [
-  { id: 'historico', name: 'Histórico Geral', icon: BookOpen },
-  { id: 'upgrades', name: 'Melhorias', icon: ListTodo },
-  { id: 'lavadas', name: 'Lavadas', icon: Droplets },
-  { id: 'seguro', name: 'Seguro', icon: Shield },
-  { id: 'financiamento', name: 'Financiamento', icon: Landmark },
-  { id: 'lembretes', name: 'Lembretes', icon: BellRing },
+const NAV = [
+  { name: 'Dashboard', href: '/dashboard' },
+  { name: 'Veículos', href: '/cars' },
+  { name: 'Relatórios', href: '/reports' },
+  { name: 'Viagens', href: '/trips' },
 ];
-
-function CollapsibleLabel({
-  collapsed,
-  className = '',
-  maxWidth = '160px',
-  children,
-}: {
-  collapsed: boolean;
-  className?: string;
-  maxWidth?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <span
-      className={`inline-block overflow-hidden whitespace-nowrap transition-all ${SIDEBAR_TRANSITION} ${className}`}
-      style={{ maxWidth: collapsed ? '0px' : maxWidth, opacity: collapsed ? 0 : 1 }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function SidebarLogo({ collapsed }: { collapsed: boolean }) {
-  return (
-    <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity min-w-0">
-      <div className="h-9 w-9 rounded-md bg-white flex items-center justify-center shrink-0 shadow-sm">
-        <RodaNexoIcon size={24} />
-      </div>
-      <CollapsibleLabel collapsed={collapsed} className="text-base font-bold tracking-tight select-none">
-        <span className="text-white">Roda</span>
-        <span className="text-blue-400">Nexo</span>
-      </CollapsibleLabel>
-    </Link>
-  );
-}
 
 function carLabel(car: { nickname: string | null; brand: string; model: string }) {
   return car.nickname || `${car.brand} ${car.model}`;
 }
 
+/** Fecha um popover ao clicar fora ou apertar Esc. */
+function useDismiss(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, close]);
+  return ref;
+}
+
+/** Navegação em pílula: o fundo escuro desliza até a aba ativa. */
+function PillNav({ pathname }: { pathname: string }) {
+  const navRef = useRef<HTMLElement>(null);
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+  const activeIndex = NAV.findIndex((i) => pathname === i.href || pathname.startsWith(i.href + '/'));
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = navRef.current?.querySelectorAll<HTMLElement>('[data-nav-item]')[activeIndex];
+      setIndicator(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [activeIndex]);
+
+  return (
+    <nav
+      ref={navRef}
+      aria-label="Principal"
+      className="relative flex items-center gap-0.5 rounded-full bg-white p-1 shadow-sm overflow-x-auto [scrollbar-width:none]"
+    >
+      {indicator && (
+        <span
+          aria-hidden
+          className="absolute top-1 bottom-1 rounded-full bg-block-ink transition-[left,width] duration-500 ease-out"
+          style={{ left: indicator.left, width: indicator.width }}
+        />
+      )}
+      {NAV.map((item, i) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          data-nav-item
+          aria-current={i === activeIndex ? 'page' : undefined}
+          className={`relative z-10 whitespace-nowrap rounded-full px-4 py-2 text-[13.5px] font-semibold transition-colors duration-300 ${
+            i === activeIndex ? 'text-on-block-ink' : 'text-slate-600 hover:text-slate-900'
+          } ${i === activeIndex && !indicator ? 'bg-block-ink' : ''}`}
+        >
+          {item.name}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function CarSwitcher() {
+  const { cars, selectedCar: carFromStore, setSelectedCarId } = useCar();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
+  // A lista de carros vem do navegador; até montar, o HTML do servidor não a conhece
+  const mounted = useMounted();
+  const selectedCar = mounted ? carFromStore : null;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-3 pr-2.5 shadow-sm hover:bg-slate-50 transition-colors max-w-[200px] sm:max-w-[240px]"
+      >
+        <span className={`live-dot h-2 w-2 shrink-0 rounded-full ${selectedCar ? 'bg-emerald-500 text-emerald-500' : 'bg-slate-300 text-slate-300'}`} />
+        <span className="min-w-0 text-left leading-tight">
+          <span className="block truncate text-[13px] font-bold text-slate-900">
+            {selectedCar ? carLabel(selectedCar) : 'Nenhum veículo'}
+          </span>
+          <span className="block truncate text-[11px] text-slate-500">
+            {selectedCar ? formatMileage(selectedCar.currentMileage) : 'Adicione o primeiro'}
+          </span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="animate-pop-in absolute right-0 top-full z-50 mt-2 w-64 rounded-xl bg-white p-1.5 shadow-lg" role="listbox">
+          {cars.map((car) => (
+            <button
+              key={car.id}
+              type="button"
+              role="option"
+              aria-selected={car.id === selectedCar?.id}
+              onClick={() => {
+                setSelectedCarId(car.id);
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-slate-50"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-slate-900">{carLabel(car)}</span>
+                <span className="block truncate text-xs text-slate-500">
+                  {car.plate || `${car.brand} ${car.model}`} · {formatMileage(car.currentMileage)}
+                </span>
+              </span>
+              {car.id === selectedCar?.id && <Check className="h-4 w-4 text-blue-600" />}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              router.push('/cars/new');
+            }}
+            className="mt-1 flex w-full items-center gap-2 rounded-md border-t border-slate-100 px-3 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+          >
+            <Plus className="h-4 w-4" /> Adicionar veículo
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: LucideIcon }[] = [
+  { mode: 'light', label: 'Claro', icon: Sun },
+  { mode: 'dark', label: 'Escuro', icon: Moon },
+  { mode: 'system', label: 'Seguir o sistema', icon: Monitor },
+];
+
+function MenuDivider() {
+  return <div className="mx-2 my-1 h-px bg-slate-100" />;
+}
+
+function MenuLink({ href, icon: Icon, label, onSelect }: { href: string; icon: LucideIcon; label: string; onSelect: () => void }) {
+  return (
+    <Link
+      href={href}
+      role="menuitem"
+      onClick={onSelect}
+      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+    >
+      <Icon className="h-4 w-4 text-slate-500" />
+      {label}
+    </Link>
+  );
+}
+
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const { mode, setMode } = useTheme();
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const ref = useDismiss(open, close);
+  // O usuário vem do navegador; até montar, o HTML do servidor não o conhece
+  const mounted = useMounted();
+  const initials = ((mounted && user?.name) || '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join('');
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label="Conta"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-[13px] font-bold text-blue-800 shadow-sm"
+      >
+        {initials}
+        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[var(--bg)] bg-emerald-500" />
+      </button>
+      {open && (
+        <div role="menu" className="animate-pop-in absolute right-0 top-full z-50 mt-2 w-64 rounded-xl bg-white p-1.5 shadow-lg">
+          <div className="px-3 pb-2 pt-2.5">
+            <p className="truncate text-sm font-bold text-slate-900">{user?.name}</p>
+            <p className="truncate text-xs text-slate-500">{user?.email}</p>
+          </div>
+
+          <MenuDivider />
+          <MenuLink href="/cars" icon={Car} label="Minha garagem" onSelect={close} />
+          <MenuLink href="/cars/new" icon={Plus} label="Adicionar veículo" onSelect={close} />
+          <MenuLink href="/reports" icon={BarChart3} label="Relatórios" onSelect={close} />
+
+          <MenuDivider />
+          <p className="px-3 pb-1 pt-1.5 text-xs font-semibold text-slate-500">Tema</p>
+          {THEME_OPTIONS.map((opt) => (
+            <button
+              key={opt.mode}
+              type="button"
+              role="menuitemradio"
+              aria-checked={mode === opt.mode}
+              onClick={(e) => setMode(opt.mode, e)}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <opt.icon className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">{opt.label}</span>
+              {mode === opt.mode && <Check className="h-4 w-4 text-blue-600" />}
+            </button>
+          ))}
+
+          <MenuDivider />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={logout}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4" /> Sair
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DockButton({
+  icon: Icon,
+  label,
+  href,
+  onClick,
+  disabled,
+}: {
+  icon: LucideIcon;
+  label: string;
+  href?: string;
+  onClick?: (e: React.MouseEvent) => void;
+  disabled?: boolean;
+}) {
+  const className =
+    'group relative flex h-10 w-10 items-center justify-center rounded-full text-on-block-accent transition-colors hover:bg-white/15 aria-disabled:opacity-40 aria-disabled:pointer-events-none';
+  const tip = (
+    <span className="pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-block-ink px-2.5 py-1 text-xs font-semibold text-on-block-ink opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 max-md:bottom-full max-md:mb-2 md:left-full md:ml-3">
+      {label}
+    </span>
+  );
+  if (href) {
+    return (
+      <Link href={href} aria-label={label} aria-disabled={disabled} tabIndex={disabled ? -1 : undefined} className={className}>
+        <Icon className="h-[18px] w-[18px]" />
+        {tip}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className={className}>
+      <Icon className="h-[18px] w-[18px]" />
+      {tip}
+    </button>
+  );
+}
+
+/** Dock de ações rápidas do carro selecionado: lateral no desktop, barra inferior no celular. */
+function Dock() {
+  const { selectedCarId } = useCar();
+  const { theme, toggle } = useTheme();
+  const car = selectedCarId ? `/cars/${selectedCarId}` : '';
+
+  return (
+    <div className="fixed z-40 flex items-center gap-1 rounded-full bg-block-accent p-1.5 shadow-lg max-md:bottom-3 max-md:left-1/2 max-md:-translate-x-1/2 md:left-5 md:top-1/2 md:-translate-y-1/2 md:flex-col">
+      <DockButton icon={Fuel} label="Novo abastecimento" href={`${car}/fuel-records/new`} disabled={!car} />
+      <DockButton icon={Wrench} label="Nova manutenção" href={`${car}/maintenances/new`} disabled={!car} />
+      <DockButton icon={Droplets} label="Lavadas" href={`${car}?tab=lavadas`} disabled={!car} />
+      <DockButton icon={BellRing} label="Lembretes" href={`${car}?tab=lembretes`} disabled={!car} />
+      <span className="mx-1 h-6 w-px bg-white/25 md:mx-0 md:my-1 md:h-px md:w-6" aria-hidden />
+      <DockButton icon={Plus} label="Adicionar veículo" href="/cars/new" />
+      <DockButton icon={theme === 'dark' ? Sun : Moon} label={theme === 'dark' ? 'Tema claro' : 'Tema escuro'} onClick={(e) => toggle(e)} />
+    </div>
+  );
+}
+
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading, logout } = useAuth();
-  const { cars, selectedCarId, setSelectedCarId } = useCar();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-  const [vehiclesOpen, setVehiclesOpen] = useState(true);
-  const [openCarIds, setOpenCarIds] = useState<Record<string, boolean>>({});
+  const { user, loading: authLoading } = useAuth();
+  const { setSelectedCarId } = useCar();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   const activeCarIdFromPath = useMemo(() => {
@@ -98,37 +334,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     return m[1];
   }, [pathname]);
 
-  const activeTab = (searchParams.get('tab') as CarTab | null) || 'historico';
-
-  // Restaura preferência salva (evita "flash" expandido antes de recolher)
+  // Abrir um carro pela URL também o seleciona no seletor do topo
   useEffect(() => {
-    const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-    if (saved === '1') setCollapsed(true);
-    setHydrated(true);
-  }, []);
-
-  // Abre cascata do veículo da rota atual
-  useEffect(() => {
-    if (pathname.startsWith('/cars')) {
-      setVehiclesOpen(true);
-    }
-    if (activeCarIdFromPath) {
-      setOpenCarIds((prev) => ({ ...prev, [activeCarIdFromPath]: true }));
-      setSelectedCarId(activeCarIdFromPath);
-    }
-  }, [pathname, activeCarIdFromPath, setSelectedCarId]);
-
-  const toggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
-      return next;
-    });
-  };
-
-  const toggleCarOpen = (carId: string) => {
-    setOpenCarIds((prev) => ({ ...prev, [carId]: !prev[carId] }));
-  };
+    if (activeCarIdFromPath) setSelectedCarId(activeCarIdFromPath);
+  }, [activeCarIdFromPath, setSelectedCarId]);
 
   // Redireciona se não estiver logado
   useEffect(() => {
@@ -142,334 +351,46 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   // Sem sessão, o effect acima já mandou para /login.
   if (!authLoading && !user) return null;
 
-  const topNav = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Relatórios', href: '/reports', icon: BarChart3 },
-    { name: 'Viagens', href: '/trips', icon: Map },
-  ];
-
-  const navLinkClass = (isActive: boolean, depth = 0) =>
-    `relative flex items-center gap-2.5 py-2 text-sm font-medium border-l-2 transition-colors ${
-      depth === 0 ? 'px-4' : depth === 1 ? 'pl-8 pr-3' : 'pl-11 pr-3'
-    } ${
-      isActive
-        ? 'border-blue-500 bg-white/[0.04] text-white'
-        : 'border-transparent text-slate-500 hover:text-slate-200'
-    }`;
-
-  const subLinkClass = (isActive: boolean) =>
-    `flex items-center gap-2 py-1.5 pl-11 pr-3 text-[12px] font-medium rounded-r-md transition-colors border-l-2 ${
-      isActive
-        ? 'border-blue-500 text-blue-300 bg-white/[0.03]'
-        : 'border-transparent text-slate-500 hover:text-slate-300'
-    }`;
-
-  const isCarsSectionActive = pathname === '/cars' || pathname.startsWith('/cars/');
-
-  const renderVehiclesTree = (onNavigate?: () => void) => {
-    const showTree = !collapsed;
-
-    return (
-      <div className="space-y-0.5">
-        {/* Parent: Meus Veículos */}
-        <div className="flex items-stretch">
-          <Link
-            href="/cars"
-            title={collapsed ? 'Meus Veículos' : undefined}
-            onClick={onNavigate}
-            className={`${navLinkClass(isCarsSectionActive && pathname === '/cars')} flex-1 min-w-0`}
-          >
-            <Car className={`h-5 w-5 shrink-0 ${isCarsSectionActive ? 'text-white' : 'text-slate-500'}`} />
-            <CollapsibleLabel collapsed={collapsed}>Meus Veículos</CollapsibleLabel>
-          </Link>
-          {showTree && (
-            <button
-              type="button"
-              onClick={() => setVehiclesOpen((o) => !o)}
-              className="px-2 text-slate-500 hover:text-slate-200 shrink-0"
-              title={vehiclesOpen ? 'Recolher veículos' : 'Expandir veículos'}
-              aria-expanded={vehiclesOpen}
-            >
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${SIDEBAR_TRANSITION} ${vehiclesOpen ? '' : '-rotate-90'}`}
-              />
-            </button>
-          )}
-        </div>
-
-        {/* Cascata: carros + abas */}
-        {showTree && vehiclesOpen && (
-          <div className="pb-1 space-y-0.5">
-            {cars.length === 0 ? (
-              <p className="pl-11 pr-3 py-1.5 text-[11px] text-slate-600 italic">Nenhum veículo</p>
-            ) : (
-              cars.map((car) => {
-                const carPathActive = pathname.startsWith(`/cars/${car.id}`);
-                const carOpen = openCarIds[car.id] ?? carPathActive;
-                const label = carLabel(car);
-
-                return (
-                  <div key={car.id} className="space-y-0.5">
-                    <div className="flex items-stretch">
-                      <Link
-                        href={`/cars/${car.id}`}
-                        onClick={() => {
-                          setSelectedCarId(car.id);
-                          setOpenCarIds((prev) => ({ ...prev, [car.id]: true }));
-                          onNavigate?.();
-                        }}
-                        className={`${navLinkClass(carPathActive, 1)} flex-1 min-w-0`}
-                        title={label}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                            carPathActive ? 'bg-blue-400' : 'bg-slate-600'
-                          }`}
-                        />
-                        <span className="truncate text-[13px]">{label}</span>
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => toggleCarOpen(car.id)}
-                        className="px-2 text-slate-500 hover:text-slate-200 shrink-0"
-                        title={carOpen ? 'Recolher abas' : 'Expandir abas'}
-                        aria-expanded={carOpen}
-                      >
-                        <ChevronDown
-                          className={`h-3.5 w-3.5 transition-transform ${SIDEBAR_TRANSITION} ${
-                            carOpen ? '' : '-rotate-90'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {carOpen && (
-                      <div className="space-y-0.5 pb-1">
-                        {CAR_TABS.map((tab) => {
-                          const href =
-                            tab.id === 'historico'
-                              ? `/cars/${car.id}`
-                              : `/cars/${car.id}?tab=${tab.id}`;
-                          const tabActive =
-                            carPathActive &&
-                            pathname === `/cars/${car.id}` &&
-                            (tab.id === 'historico'
-                              ? !searchParams.get('tab') || activeTab === 'historico'
-                              : activeTab === tab.id);
-                          const TabIcon = tab.icon;
-                          return (
-                            <Link
-                              key={tab.id}
-                              href={href}
-                              onClick={() => {
-                                setSelectedCarId(car.id);
-                                onNavigate?.();
-                              }}
-                              className={subLinkClass(!!tabActive)}
-                            >
-                              <TabIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                              <span className="truncate">{tab.name}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
+  // /cars/<id> tem layout de altura fixa; /cars/new é um formulário comum, que rola
+  const isCarDetail = /^\/cars\/(?!new$)[^/]+$/.test(pathname);
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
-      {/* Sidebar - Desktop */}
-      <aside
-        className={`hidden md:flex flex-col bg-slate-950 shrink-0 sticky top-0 h-screen relative ${hydrated ? `transition-[width] ${SIDEBAR_TRANSITION}` : ''
-          } ${collapsed ? 'w-[72px]' : 'w-64'}`}
-      >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-5 border-b border-white/5 shrink-0 overflow-hidden">
-          <SidebarLogo collapsed={collapsed} />
-        </div>
-
-        {/* Botão recolher/expandir */}
-        <button
-          onClick={toggleCollapsed}
-          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-          className={`absolute -right-3 top-[52px] h-6 w-6 rounded-full bg-slate-800 border border-white/10 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center shadow-md transition-colors z-10`}
-        >
-          <ChevronsLeft
-            className={`h-3.5 w-3.5 transition-transform ${SIDEBAR_TRANSITION} ${collapsed ? 'rotate-180' : ''}`}
-          />
-        </button>
-
-        {/* Navigation */}
-        <nav className="flex-1 py-6 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          <div className="px-4 pb-3 overflow-hidden">
-            <CollapsibleLabel
-              collapsed={collapsed}
-              maxWidth="120px"
-              className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-600"
-            >
-              Menu
-            </CollapsibleLabel>
-          </div>
-
-          {/* Dashboard */}
-          <Link
-            href="/dashboard"
-            title={collapsed ? 'Dashboard' : undefined}
-            className={navLinkClass(pathname === '/dashboard' || pathname.startsWith('/dashboard/'))}
-          >
-            <LayoutDashboard
-              className={`h-5 w-5 shrink-0 ${
-                pathname.startsWith('/dashboard') ? 'text-white' : 'text-slate-500'
-              }`}
-            />
-            <CollapsibleLabel collapsed={collapsed}>Dashboard</CollapsibleLabel>
+    <div className="h-screen flex flex-col bg-background">
+      <header className="shrink-0 px-4 pt-3 md:pl-24 md:pr-8 md:pt-4">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-3">
+          <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[#fcfdfd] shadow-sm">
+              <RodaNexoIcon size={26} />
+            </span>
+            <span className="hidden text-lg font-bold tracking-tight text-slate-900 sm:inline">RodaNexo</span>
           </Link>
 
-          {/* Meus Veículos + cascata */}
-          {renderVehiclesTree()}
-
-          {/* Demais itens */}
-          {topNav
-            .filter((i) => i.href !== '/dashboard')
-            .map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  title={collapsed ? item.name : undefined}
-                  className={navLinkClass(isActive)}
-                >
-                  <item.icon className={`h-5 w-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                  <CollapsibleLabel collapsed={collapsed}>{item.name}</CollapsibleLabel>
-                </Link>
-              );
-            })}
-        </nav>
-
-        {/* User profile & Logout */}
-        <div
-          className={`border-t border-white/5 shrink-0 space-y-2 ${
-            collapsed ? 'px-2 py-3' : 'p-4'
-          }`}
-        >
-          <div
-            className={`flex items-center py-1.5 min-w-0 ${
-              collapsed ? 'justify-center px-0' : 'gap-3 px-2'
-            }`}
-          >
-            <div
-              className="h-9 w-9 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20 flex items-center justify-center font-bold text-sm shrink-0"
-              title={collapsed ? user?.name : undefined}
-            >
-              {user ? user.name.charAt(0).toUpperCase() : ''}
-            </div>
-            <CollapsibleLabel collapsed={collapsed} maxWidth="150px">
-              <p className="text-sm font-bold text-white truncate">{user?.name ?? ' '}</p>
-              <p className="text-xs text-slate-500 truncate">{user?.email ?? ' '}</p>
-            </CollapsibleLabel>
+          <div className="order-last w-full md:order-none md:w-auto md:flex-1 md:flex md:justify-center">
+            <PillNav pathname={pathname} />
           </div>
-          <button
-            onClick={logout}
-            title={collapsed ? 'Sair' : undefined}
-            className={`w-full flex items-center rounded-md text-sm font-semibold text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all ${
-              collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-4 py-2.5'
-            }`}
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            <CollapsibleLabel collapsed={collapsed}>Sair</CollapsibleLabel>
-          </button>
-        </div>
-      </aside>
 
-      {/* Mobile Header / Navbar */}
-      <header className="md:hidden h-16 bg-slate-950 flex items-center justify-between px-4 sticky top-0 z-40 shrink-0">
-        <SidebarLogo collapsed={false} />
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all"
-        >
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+          <div className="ml-auto flex items-center gap-2 md:ml-0">
+            <CarSwitcher />
+            <UserMenu />
+          </div>
+        </div>
       </header>
 
-      {/* Mobile Drawer Navigation Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-16 bg-slate-950/50 backdrop-blur-sm z-30 flex flex-col justify-start overflow-y-auto">
-          <div className="bg-slate-950 border-b border-white/5 px-2 py-6 space-y-4 shadow-xl">
-            <nav className="space-y-1">
-              <Link
-                href="/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className={navLinkClass(pathname.startsWith('/dashboard'))}
-              >
-                <LayoutDashboard className={`h-5 w-5 ${pathname.startsWith('/dashboard') ? 'text-white' : 'text-slate-500'}`} />
-                Dashboard
-              </Link>
-
-              {renderVehiclesTree(() => setMobileMenuOpen(false))}
-
-              {topNav
-                .filter((i) => i.href !== '/dashboard')
-                .map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={navLinkClass(isActive)}
-                    >
-                      <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-            </nav>
-            <div className="pt-4 border-t border-white/5 flex items-center justify-between px-2">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20 flex items-center justify-center font-bold text-sm">
-                  {user ? user.name.charAt(0).toUpperCase() : ''}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white">{user?.name ?? ' '}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  logout();
-                }}
-                className="flex items-center gap-2 text-sm font-semibold text-red-400 bg-red-500/10 px-3 py-2 rounded-lg"
-              >
-                <LogOut className="h-4 w-4" />
-                Sair
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <main
-          className={`flex-1 min-h-0 p-6 md:p-8 ${
-            /^\/cars\/[^/]+$/.test(pathname)
-              ? 'overflow-hidden flex flex-col'
-              : 'overflow-y-auto'
-          }`}
+      <main
+        className={`flex-1 min-h-0 px-4 pt-6 pb-24 md:pl-24 md:pr-8 md:pb-8 ${
+          isCarDetail ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'
+        }`}
+      >
+        {/* key por rota: a entrada escalonada roda a cada troca de página */}
+        <div
+          key={pathname}
+          className={`page-enter mx-auto w-full max-w-[1600px] ${isCarDetail ? 'flex-1 min-h-0 flex flex-col' : ''}`}
         >
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
+
+      <Dock />
     </div>
   );
 }

@@ -694,17 +694,14 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
       )}
 
       {/* Tabs Selector — fixo; só scroll horizontal se precisar */}
-      <div className="border-b border-slate-200 shrink-0">
-        <div
-          className="flex flex-nowrap items-center gap-0 overflow-x-auto overflow-y-hidden overscroll-x-contain"
-          style={{ scrollbarWidth: 'thin' }}
-        >
+      <div className="shrink-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none]">
+        <div className="inline-flex flex-nowrap items-center gap-0.5 rounded-full bg-white p-1 shadow-sm">
           <button
             type="button"
             onClick={() => setActiveTab('historico')}
-            className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'historico'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-300 shrink-0 ${activeTab === 'historico'
+              ? 'bg-block-ink text-on-block-ink'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <BookOpen className="h-4 w-4 shrink-0" />
@@ -713,9 +710,9 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           <button
             type="button"
             onClick={() => setActiveTab('upgrades')}
-            className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'upgrades'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-300 shrink-0 ${activeTab === 'upgrades'
+              ? 'bg-block-ink text-on-block-ink'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <ListTodo className="h-4 w-4 shrink-0" />
@@ -724,9 +721,9 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           <button
             type="button"
             onClick={() => setActiveTab('lavadas')}
-            className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'lavadas'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-300 shrink-0 ${activeTab === 'lavadas'
+              ? 'bg-block-ink text-on-block-ink'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <Droplets className="h-4 w-4 shrink-0" />
@@ -735,9 +732,9 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           <button
             type="button"
             onClick={() => setActiveTab('seguro')}
-            className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'seguro'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-300 shrink-0 ${activeTab === 'seguro'
+              ? 'bg-block-ink text-on-block-ink'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <Shield className="h-4 w-4 shrink-0" />
@@ -746,9 +743,9 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           <button
             type="button"
             onClick={() => setActiveTab('financiamento')}
-            className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'financiamento'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-300 shrink-0 ${activeTab === 'financiamento'
+              ? 'bg-block-ink text-on-block-ink'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <Landmark className="h-4 w-4 shrink-0" />
@@ -757,9 +754,9 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
           <button
             type="button"
             onClick={() => setActiveTab('lembretes')}
-            className={`inline-flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px shrink-0 ${activeTab === 'lembretes'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-300 shrink-0 ${activeTab === 'lembretes'
+              ? 'bg-block-ink text-on-block-ink'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <BellRing className="h-4 w-4 shrink-0" />

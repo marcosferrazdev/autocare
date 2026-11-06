@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Urbanist } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth-provider";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const urbanist = Urbanist({
+  variable: "--font-urbanist",
   subsets: ["latin"],
 });
 
@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   },
 };
 
+// Aplica o tema salvo antes da primeira pintura (sem piscar claro → escuro)
+const THEME_SCRIPT = `try{var t=localStorage.getItem('rodanexo_theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,9 +27,13 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${spaceGrotesk.variable} h-full antialiased`}
+      className={`${urbanist.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full bg-slate-50 text-slate-900 flex flex-col font-sans">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="min-h-full bg-background text-foreground flex flex-col font-sans">
         <AuthProvider>
           {children}
         </AuthProvider>
