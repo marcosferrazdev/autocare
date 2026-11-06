@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { CarService } from '@/services/car-service';
 import { DashboardService } from '@/services/dashboard-service';
-import { SELECTED_CAR_COOKIE } from '@/components/providers/car-provider';
+import { SELECTED_CAR_COOKIE } from '@/lib/selected-car';
 import DashboardClient from './dashboard-client';
 
 /**

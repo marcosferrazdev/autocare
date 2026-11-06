@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './auth-provider';
+import { SELECTED_CAR_COOKIE } from '@/lib/selected-car';
 
 interface Car {
   id: string;
@@ -29,9 +30,6 @@ interface CarContextType {
 
 const CarContext = createContext<CarContextType | undefined>(undefined);
 
-// Cookie (e não só localStorage) porque o servidor precisa ler a seleção para
-// renderizar dashboard e relatórios já com os dados do carro certo.
-export const SELECTED_CAR_COOKIE = 'autocare_car_id';
 
 function readCarCookie(): string | null {
   if (typeof document === 'undefined') return null;

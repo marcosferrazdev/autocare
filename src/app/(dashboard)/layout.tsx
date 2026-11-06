@@ -9,6 +9,8 @@ import { ToastProvider } from '@/components/ui/toast';
 import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 import { RodaNexoIcon } from '@/components/logo';
 import { useMounted, useTheme, type ThemeMode } from '@/lib/theme';
+import { useDismiss } from '@/lib/use-dismiss';
+import { AlertsBell } from '@/components/maintenance-alerts';
 import { formatMileage } from '@/lib/formatters';
 import {
   ChevronDown,
@@ -36,25 +38,6 @@ const NAV = [
 
 function carLabel(car: { nickname: string | null; brand: string; model: string }) {
   return car.nickname || `${car.brand} ${car.model}`;
-}
-
-/** Fecha um popover ao clicar fora ou apertar Esc. */
-function useDismiss(open: boolean, close: () => void) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open, close]);
-  return ref;
 }
 
 /** Navegação em pílula: o fundo escuro desliza até a aba ativa. */
@@ -119,7 +102,7 @@ function CarSwitcher() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-3 pr-2.5 shadow-sm hover:bg-slate-50 transition-colors max-w-[200px] sm:max-w-[240px]"
+        className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-3 pr-2.5 shadow-sm hover:bg-slate-50 transition-colors max-w-[170px] sm:max-w-[240px]"
       >
         <span className={`live-dot h-2 w-2 shrink-0 rounded-full ${selectedCar ? 'bg-emerald-500 text-emerald-500' : 'bg-slate-300 text-slate-300'}`} />
         <span className="min-w-0 text-left leading-tight">
@@ -371,6 +354,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2 md:ml-0">
             <CarSwitcher />
+            <AlertsBell />
             <UserMenu />
           </div>
         </div>

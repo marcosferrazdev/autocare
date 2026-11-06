@@ -7,7 +7,7 @@ import { FuelRecordService } from '@/services/fuel-record-service';
 import { WashRecordService } from '@/services/wash-record-service';
 import { InsuranceService } from '@/services/insurance-service';
 import { FinancingService } from '@/services/financing-service';
-import { SELECTED_CAR_COOKIE } from '@/components/providers/car-provider';
+import { SELECTED_CAR_COOKIE } from '@/lib/selected-car';
 import ReportsClient, { ReportsInitialData } from './reports-client';
 
 const VAZIO: ReportsInitialData = {

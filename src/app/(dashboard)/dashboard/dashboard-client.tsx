@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCar } from '@/components/providers/car-provider';
-import { MaintenanceAlerts } from '@/components/maintenance-alerts';
 import { formatCurrency, formatMileage, formatConsumption, formatDate } from '@/lib/formatters';
 import {
   Car,
@@ -208,52 +207,57 @@ export default function DashboardClient({
   return (
     <div className="space-y-5">
       {/* Cabeçalho: nome do carro e os três números que importam no dia a dia */}
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-        <div className="min-w-0 xl:mr-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="min-w-0 lg:max-w-[32%] lg:shrink">
           <h1 className="truncate text-[34px] font-bold leading-tight tracking-tight text-slate-900">{carName}</h1>
-          <p className="text-sm text-slate-500">
+          <p className="truncate text-sm text-slate-500">
             {data.car.brand} {data.car.model}
             {data.car.plate ? ` · ${data.car.plate}` : ''}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 xl:flex-1">
-          <HeaderStat icon={Coins} value={<CountUp value={metrics.totalCarCost} format={formatCurrency} />} label="Gasto total com o carro" />
-          <HeaderStat icon={Milestone} value={formatMileage(data.car.currentMileage)} label="No odômetro" />
+        {/* Os três números sempre numa linha; no celular a linha rola de lado */}
+        <div className="-mx-1 flex min-w-0 flex-nowrap items-center gap-x-5 overflow-x-auto px-1 py-1 [scrollbar-width:none] lg:flex-1 lg:justify-center">
+          <HeaderStat icon={Coins} value={<CountUp value={metrics.totalCarCost} format={formatCurrency} />} label="Gasto total" />
+          <HeaderStat icon={Milestone} value={formatMileage(data.car.currentMileage)} label="Odômetro" />
           <HeaderStat
             icon={Activity}
             solid
             value={metrics.averageConsumption ? formatConsumption(metrics.averageConsumption) : '—'}
             label={
               !metrics.averageConsumption
-                ? 'Consumo: aguardando abastecimentos'
+                ? 'Consumo: sem dados'
                 : metrics.averageConsumptionEstimated
-                  ? 'Consumo médio estimado'
-                  : 'Consumo médio entre tanques cheios'
+                  ? 'Consumo estimado'
+                  : 'Consumo médio'
             }
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+        {/* Entre lg e 2xl os botões ficam só com o ícone para caber tudo na linha */}
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:items-center">
           <Link
             href={`${carHref}/maintenances/new`}
-            className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+            aria-label="Registrar manutenção"
+            title="Registrar manutenção"
+            className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50 lg:h-11 lg:w-11 lg:px-0 2xl:h-auto 2xl:w-auto 2xl:px-4"
           >
-            <Wrench className="h-4 w-4" /> <span className="sm:hidden">Manutenção</span>
-            <span className="hidden sm:inline">Registrar manutenção</span>
+            <Wrench className="h-4 w-4" />
+            <span className="sm:hidden">Manutenção</span>
+            <span className="hidden sm:inline lg:hidden 2xl:inline">Registrar manutenção</span>
           </Link>
           <Link
             href={`${carHref}/fuel-records/new`}
-            className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-blue-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+            aria-label="Registrar abastecimento"
+            title="Registrar abastecimento"
+            className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-blue-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 lg:h-11 lg:w-11 lg:px-0 2xl:h-auto 2xl:w-auto 2xl:px-4"
           >
-            <Fuel className="h-4 w-4" /> <span className="sm:hidden">Abastecer</span>
-            <span className="hidden sm:inline">Registrar abastecimento</span>
+            <Fuel className="h-4 w-4" />
+            <span className="sm:hidden">Abastecer</span>
+            <span className="hidden sm:inline lg:hidden 2xl:inline">Registrar abastecimento</span>
           </Link>
         </div>
       </div>
-
-      {/* Alertas de Manutenção Preventiva */}
-      <MaintenanceAlerts carId={activeCarId} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {/* Gastos por mês: o card principal */}
@@ -403,7 +407,7 @@ function HeaderStat({
   solid?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">
       <span
         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
           solid ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 shadow-sm'
