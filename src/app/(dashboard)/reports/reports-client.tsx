@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useCar } from '@/components/providers/car-provider';
 import { formatCurrency, formatMileage, formatDate, formatConsumption } from '@/lib/formatters';
+import { calculateAverageConsumption } from '@/lib/calculations';
 import {
   BarChart3,
   Filter,
@@ -52,9 +53,11 @@ interface FuelLog {
   fuelType: string;
   pricePerLiter: number;
   liters: number;
+  fullTank: boolean;
   totalPrice: number;
   gasStation: string | null;
   consumptionKmPerLiter: number | null;
+  consumptionEstimated: boolean;
   paymentMethod?: string | null;
   installmentCount?: number | null;
   installmentValue?: number | null;
@@ -286,13 +289,7 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
   const totalSpent =
     totalMaintCost + totalFuelCost + totalWashCost + totalInsuranceCost + totalFinancingCost;
 
-  const validConsumptions = fuelRecords
-    .map(f => f.consumptionKmPerLiter)
-    .filter((c): c is number => c !== null && c > 0);
-  
-  const avgConsumption = validConsumptions.length > 0
-    ? Number((validConsumptions.reduce((sum, c) => sum + c, 0) / validConsumptions.length).toFixed(2))
-    : null;
+  const avgConsumption = calculateAverageConsumption(fuelRecords);
 
   // Custo por KM nos dados filtrados
   const allMileages = [
@@ -514,9 +511,9 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
           {loading ? (
             <div className="h-6 bg-slate-100 rounded w-1/2 mt-1.5 animate-pulse"></div>
           ) : (
-            <p className="text-lg font-bold text-slate-800 mt-1">{avgConsumption ? formatConsumption(avgConsumption) : '-'}</p>
+            <p className="text-lg font-bold text-slate-800 mt-1">{avgConsumption ? formatConsumption(avgConsumption.value) : '-'}</p>
           )}
-          <p className="text-slate-400 text-xxs mt-2">Média dos abastecimentos</p>
+          <p className="text-slate-400 text-xxs mt-2">{avgConsumption?.estimated ? 'Estimado (sem tanque cheio)' : 'Média entre tanques cheios'}</p>
         </div>
 
         {/* Custo/KM */}
@@ -737,7 +734,7 @@ export default function ReportsClient({ initial }: { initial: ReportsInitialData
                       <td className="py-3 pr-4">{formatMileage(f.mileage)}</td>
                       <td className="py-3 pr-4">{formatCurrency(f.pricePerLiter)}</td>
                       <td className="py-3 pr-4">{f.liters.toFixed(2)} L</td>
-                      <td className="py-3 pr-4 font-bold text-amber-600">{f.consumptionKmPerLiter ? formatConsumption(f.consumptionKmPerLiter) : '-'}</td>
+                      <td className="py-3 pr-4 font-bold text-amber-600">{f.consumptionKmPerLiter ? `${formatConsumption(f.consumptionKmPerLiter)}${f.consumptionEstimated ? ' (estimado)' : ''}` : '-'}</td>
                       <td className="py-3 pr-4 text-slate-500">{f.gasStation || '-'}</td>
                       <td className="py-3 pr-4 text-slate-500 font-medium">
                         {f.paymentMethod === 'À vista' || !f.paymentMethod ? (

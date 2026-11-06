@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { calculateCostPerKm } from '@/lib/calculations';
+import { calculateCostPerKm, calculateAverageConsumption } from '@/lib/calculations';
 
 export interface DashboardData {
   car: {
@@ -35,6 +35,7 @@ export interface DashboardData {
       selfWash: boolean;
     } | null;
     averageConsumption: number | null;
+    averageConsumptionEstimated: boolean;
     costPerKm: number;
   };
   charts: {
@@ -125,6 +126,7 @@ export class DashboardService {
             date: true,
             mileage: true,
             liters: true,
+            fullTank: true,
             totalPrice: true,
             consumptionKmPerLiter: true,
             paymentMethod: true,
@@ -212,13 +214,7 @@ export class DashboardService {
         }
       : null;
 
-    const validConsumptions = fuelRecords
-      .map((f) => f.consumptionKmPerLiter)
-      .filter((c): c is number => c !== null && c > 0);
-
-    const averageConsumption = validConsumptions.length > 0
-      ? Number((validConsumptions.reduce((sum, val) => sum + val, 0) / validConsumptions.length).toFixed(2))
-      : null;
+    const average = calculateAverageConsumption(fuelRecords);
 
     const allMileages = [
       car.currentMileage,
@@ -364,7 +360,8 @@ export class DashboardService {
         latestMaintenance,
         latestFuelRecord,
         latestWashRecord,
-        averageConsumption,
+        averageConsumption: average?.value ?? null,
+        averageConsumptionEstimated: average?.estimated ?? false,
         costPerKm,
       },
       charts: {

@@ -985,6 +985,7 @@ export default function CarDetailClient({ initial }: { initial: CarDetailInitial
                         {f.consumptionKmPerLiter && (
                           <span className="text-xxs px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100 font-bold">
                             {formatConsumption(f.consumptionKmPerLiter)}
+                            {f.consumptionEstimated && ' (estimado)'}
                           </span>
                         )}
                       </div>

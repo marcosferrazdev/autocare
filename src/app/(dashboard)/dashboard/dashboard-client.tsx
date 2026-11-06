@@ -72,6 +72,7 @@ interface DashboardData {
       selfWash: boolean;
     } | null;
     averageConsumption: number | null;
+    averageConsumptionEstimated: boolean;
     costPerKm: number;
   };
   charts: {
@@ -277,7 +278,11 @@ export default function DashboardClient({
             {metrics.averageConsumption ? formatConsumption(metrics.averageConsumption) : '—'}
           </p>
           <p className="text-xxs text-slate-400 mt-1.5">
-            {metrics.averageConsumption ? 'média dos abastecimentos' : 'aguardando abastecimentos'}
+            {!metrics.averageConsumption
+              ? 'aguardando abastecimentos'
+              : metrics.averageConsumptionEstimated
+                ? 'estimado (sem tanque cheio)'
+                : 'média entre tanques cheios'}
           </p>
         </div>
 

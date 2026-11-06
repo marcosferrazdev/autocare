@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { calculateFuelRecordTotal, calculateFuelConsumption } from '@/lib/calculations';
+import { calculateFuelRecordTotal, calculateFuelConsumptions } from '@/lib/calculations';
 import { FuelRecord, Prisma } from '@prisma/client';
 import { serializePhotos } from '@/lib/photos';
 import { CarService } from './car-service';
@@ -44,19 +44,17 @@ export class FuelRecordService {
       orderBy: { mileage: 'asc' },
     });
 
+    const consumptions = calculateFuelConsumptions(records);
+
     for (let i = 0; i < records.length; i++) {
       const current = records[i];
-      const previous = i > 0 ? records[i - 1] : null;
+      const consumption = consumptions[i]?.value ?? null;
+      const estimated = consumptions[i]?.estimated ?? false;
 
-      let consumption: number | null = null;
-      if (previous) {
-        consumption = calculateFuelConsumption(current.mileage, previous.mileage, current.liters);
-      }
-
-      if (current.consumptionKmPerLiter !== consumption) {
+      if (current.consumptionKmPerLiter !== consumption || current.consumptionEstimated !== estimated) {
         await tx.fuelRecord.update({
           where: { id: current.id },
-          data: { consumptionKmPerLiter: consumption },
+          data: { consumptionKmPerLiter: consumption, consumptionEstimated: estimated },
         });
       }
     }
