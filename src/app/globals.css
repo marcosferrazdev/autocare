@@ -372,6 +372,55 @@ body {
   animation: grow-x 0.9s var(--ease) both;
 }
 
+/* Cards que entram em sequência (o atraso vem inline) */
+.rise-in {
+  animation: rise 0.6s var(--ease) both;
+}
+
+/* Barras verticais que crescem de baixo */
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+.grow-y {
+  transform-origin: bottom center;
+  animation: grow-y 0.8s var(--ease) both;
+}
+
+/* Gaveta lateral entrando pela direita */
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+.drawer-in {
+  animation: drawer-in 0.45s var(--ease) both;
+}
+
+/* Disco de freio atrás da capa da peça: aço, cubo escuro e furos de ventilação */
+.rotor {
+  background: radial-gradient(
+    circle,
+    #22262b 0 13%,
+    #8b929b 14% 24%,
+    #2f343a 25% 27%,
+    #c7cdd4 28% 88%,
+    #9aa1aa 89% 100%
+  );
+  box-shadow: inset 0 0 0 2px #00000014, 0 6px 14px -6px #0000004d;
+}
+.rotor::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: repeating-conic-gradient(from 0deg, transparent 0 16deg, #0000002e 16deg 19deg);
+  -webkit-mask: radial-gradient(circle, transparent 46%, #000 47% 72%, transparent 73%);
+  mask: radial-gradient(circle, transparent 46%, #000 47% 72%, transparent 73%);
+}
+
 /* Minigráfico que se desenha da esquerda para a direita (o traço usa pathLength=1) */
 @keyframes draw {
   to {

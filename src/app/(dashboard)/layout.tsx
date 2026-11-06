@@ -32,6 +32,7 @@ import {
 const NAV = [
   { name: 'Dashboard', href: '/dashboard' },
   { name: 'Veículos', href: '/cars' },
+  { name: 'Peças', href: '/parts' },
   { name: 'Relatórios', href: '/reports' },
   { name: 'Viagens', href: '/trips' },
 ];
